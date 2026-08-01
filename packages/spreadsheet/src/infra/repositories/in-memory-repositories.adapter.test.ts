@@ -74,8 +74,8 @@ describe("in-memory workbook repositories", () => {
     if (second.kind !== "created") {
       return;
     }
-    expect(second.revision.number).toBe(2);
-    expect([...second.revision.cells.keys()]).toEqual([
+    expect(second.state.revision.number).toBe(2);
+    expect([...second.state.revision.cells.keys()]).toEqual([
       cellId(initial.worksheet.id, cellAddress(1, 1)),
       cellId(initial.worksheet.id, cellAddress(1, 2)),
     ]);
@@ -121,7 +121,7 @@ describe("in-memory workbook repositories", () => {
 
     expect(deleted.kind).toBe("created");
     if (deleted.kind === "created") {
-      expect(deleted.revision.cells.has(target)).toBe(false);
+      expect(deleted.state.revision.cells.has(target)).toBe(false);
     }
     expect(stale).toEqual({
       kind: "edit-conflict",
@@ -137,9 +137,9 @@ describe("in-memory workbook repositories", () => {
       numberChange(initial.workbook.id, initial.worksheet.id, 0, 1, 1, 10),
     );
 
-    await expect(repositories.revisions.find(initial.workbook.id, 0)).resolves.toBeNull();
-    await expect(repositories.revisions.find(initial.workbook.id, 1)).resolves.toMatchObject({
-      number: 1,
+    await expect(repositories.workbooks.find(initial.workbook.id)).resolves.toMatchObject({
+      workbook: { currentRevision: 1 },
+      revision: { number: 1 },
     });
   });
 });

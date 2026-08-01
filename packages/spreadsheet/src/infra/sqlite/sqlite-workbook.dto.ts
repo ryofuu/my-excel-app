@@ -40,10 +40,12 @@ export type WorkbookRevisionDto = Readonly<{
   cells: readonly CellStateDto[];
 }>;
 
-export type WorkbookSeedDto = Readonly<{
+export type WorkbookStateDto = Readonly<{
   workbook: WorkbookDto;
   revision: WorkbookRevisionDto;
 }>;
+
+export type WorkbookSeedDto = WorkbookStateDto;
 
 export type WorkbookChangeSetDto = Readonly<{
   workbookId: string;
@@ -52,7 +54,7 @@ export type WorkbookChangeSetDto = Readonly<{
 }>;
 
 export type WorkbookRevisionCreateDtoResult =
-  | Readonly<{ kind: "created"; revision: WorkbookRevisionDto }>
+  | Readonly<{ kind: "created"; state: WorkbookStateDto }>
   | Readonly<{
       kind: "edit-conflict";
       conflictingCellIds: readonly string[];

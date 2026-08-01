@@ -5,12 +5,12 @@ import "@/app.styles.css";
 
 import { createRoot } from "react-dom/client";
 
-import { createSpreadsheetClient } from "@/infra/spreadsheet-client.factory";
+import { createEngineSpreadsheetClient } from "@/infra/engine-spreadsheet-client.adapter";
 import App from "@/presentation/app.component";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");
 
-const client = createSpreadsheetClient();
+const client = createEngineSpreadsheetClient();
 
 createRoot(root).render(<App client={client} />);
