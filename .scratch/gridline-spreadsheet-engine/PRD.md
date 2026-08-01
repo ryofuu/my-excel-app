@@ -31,7 +31,7 @@ Excel や Google スプレッドシートはセル入力、数式の解析、参
 
 ## 実装上の決定事項
 
-- pnpm workspace を `web`、`spreadsheet-engine`、`spreadsheet-application`、`sqlite-workbook-repository` に分割する。依存方向は Web → application → engine とし、SQLite adapter は application の repository port を実装する。
+- pnpm workspace を `packages/domain`、`packages/usecases`、`packages/infra`、`apps/web` に分割する。依存方向は domain ← usecases ← infra ← Web とし、Entity は `domain/entities`、Value Object は `domain/value-objects`、SQLite adapter は infra の repository port 実装に置く。
 - `Workbook`、`WorkbookRevision`、`Worksheet`、`Cell` だけを readonly class の Entity とする。識別子、参照、値、AST、依存、ChangeSet、Error は branded primitive、readonly record、discriminated union、関数で表す。名前に `Entity` / `VO` suffix は付けない。
 - `WorkbookRevision` は Cell の入力状態と Worksheet 順序を表す。`CalculationSnapshot` はその版に対する値・DirtyCell・評価順・循環情報を表し、Workbook のコピーではない。
 - Cell state は疎に保持し、content のない Cell は engine 上に materialize しない。削除は persistence 上で tombstone として `modifiedRevision` を残す。

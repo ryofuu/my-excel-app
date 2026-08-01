@@ -26,15 +26,15 @@ importers:
       '@fontsource/ibm-plex-mono':
         specifier: latest
         version: 5.3.0
-      '@gridline/spreadsheet-application':
+      '@gridline/domain':
         specifier: workspace:*
-        version: link:../../packages/spreadsheet-application
-      '@gridline/spreadsheet-engine':
+        version: link:../../packages/domain
+      '@gridline/infra':
         specifier: workspace:*
-        version: link:../../packages/spreadsheet-engine
-      '@gridline/sqlite-workbook-repository':
+        version: link:../../packages/infra
+      '@gridline/usecases':
         specifier: workspace:*
-        version: link:../../packages/sqlite-workbook-repository
+        version: link:../../packages/usecases
       '@radix-ui/react-dialog':
         specifier: latest
         version: 1.1.23(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -85,25 +85,25 @@ importers:
         specifier: latest
         version: 8.2.0(@types/node@26.1.2)(jiti@2.7.0)
 
-  packages/spreadsheet-application:
-    dependencies:
-      '@gridline/spreadsheet-engine':
-        specifier: workspace:*
-        version: link:../spreadsheet-engine
+  packages/domain: {}
 
-  packages/spreadsheet-engine: {}
-
-  packages/sqlite-workbook-repository:
+  packages/infra:
     dependencies:
-      '@gridline/spreadsheet-application':
+      '@gridline/domain':
         specifier: workspace:*
-        version: link:../spreadsheet-application
-      '@gridline/spreadsheet-engine':
+        version: link:../domain
+      '@gridline/usecases':
         specifier: workspace:*
-        version: link:../spreadsheet-engine
+        version: link:../usecases
       '@sqlite.org/sqlite-wasm':
         specifier: latest
         version: 3.53.0-build1
+
+  packages/usecases:
+    dependencies:
+      '@gridline/domain':
+        specifier: workspace:*
+        version: link:../domain
 
 packages:
 

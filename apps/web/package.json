@@ -11,9 +11,9 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "latest",
     "@fontsource-variable/ibm-plex-sans": "latest",
-    "@gridline/spreadsheet-application": "workspace:*",
-    "@gridline/spreadsheet-engine": "workspace:*",
-    "@gridline/sqlite-workbook-repository": "workspace:*",
+    "@gridline/domain": "workspace:*",
+    "@gridline/infra": "workspace:*",
+    "@gridline/usecases": "workspace:*",
     "@radix-ui/react-dialog": "latest",
     "@radix-ui/react-tooltip": "latest",
     "class-variance-authority": "latest",

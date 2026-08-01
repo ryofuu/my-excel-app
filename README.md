@@ -23,10 +23,19 @@ pnpm build
 
 | パッケージ | 責務 |
 | --- | --- |
-| `packages/spreadsheet-engine` | A1 参照・数式パース・依存グラフ・差分再計算・循環/型エラー |
-| `packages/spreadsheet-application` | Repository port と Workbook/Revision の CRUD use case |
-| `packages/sqlite-workbook-repository` | SQLite WASM Worker と OPFS 永続化アダプター |
-| `apps/web` | Tailwind/shadcn 風の Excel ライク UI と Calculation Inspector |
+| `packages/domain` | Entity、Value Object、A1 参照・数式・依存グラフ・差分再計算 |
+| `packages/usecases` | Workbook/WorkbookRevision の CRUD use case と repository port |
+| `packages/infra` | in-memory / SQLite WASM Worker / OPFS の repository adapter |
+| `apps/web` | `presentation` の UI と `infra` の composition root |
+
+依存方向は `domain ← usecases ← infra ← apps/web` です。主な配置は次のとおりです。
+
+```text
+packages/domain/src/{entities,value-objects,services}
+packages/usecases/src/{workbooks,workbook-revisions,ports}
+packages/infra/src/{repositories,sqlite/worker}
+apps/web/src/{presentation,infra}
+```
 
 ## 初期版の数式範囲
 
