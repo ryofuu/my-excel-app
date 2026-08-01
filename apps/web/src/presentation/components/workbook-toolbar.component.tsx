@@ -41,8 +41,8 @@ export function WorkbookToolbar({ canPaste, onCopy, onPaste, onRecalculate, isCa
       </div>
       <Divider />
       <div className="toolbar-group">
-        <ToolButton label="Copy selected cell" onClick={onCopy}><Copy className="size-3.5" /></ToolButton>
-        <ToolButton disabled={!canPaste} label="Paste copied cell" onClick={onPaste}><ClipboardPaste className="size-3.5" /></ToolButton>
+        <ToolButton label="Copy selected cells" onClick={onCopy}><Copy className="size-3.5" /></ToolButton>
+        <ToolButton disabled={!canPaste} label="Paste copied cells" onClick={onPaste}><ClipboardPaste className="size-3.5" /></ToolButton>
       </div>
       <Divider />
       <div className="toolbar-group">

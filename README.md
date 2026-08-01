@@ -2,6 +2,10 @@
 
 Excel の数式計算の仕組みを学ぶための、ブラウザ内スプレッドシート実装です。入力状態を `WorkbookRevision`、導出結果を `CalculationSnapshot` として分離し、右側の Inspector でパース・依存グラフ・dirty cells・評価順・エラー伝播を確認できます。
 
+## 内部の仕組みを学ぶ
+
+[学習ガイド](docs/learning/README.md)では、セル入力が `CellContent` として保存され、数式の字句解析・構文解析・依存グラフ構築・増分再計算を経て `CalculationSnapshot` になるまでを、実際のコードと対応づけて説明しています。
+
 ## 起動
 
 ```bash

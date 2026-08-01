@@ -58,7 +58,7 @@ export type CellInput = {
 
 export type SpreadsheetClient = {
   open(): Promise<WorkbookView>;
-  createCell(input: CellInput): Promise<WorkbookView>;
+  createCells(inputs: readonly CellInput[]): Promise<WorkbookView>;
   inspect(address: string): Promise<CalculationInspection>;
   recalculate(): Promise<WorkbookView>;
   dispose(): void;
