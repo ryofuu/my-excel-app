@@ -23,19 +23,19 @@ pnpm build
 
 | パッケージ | 責務 |
 | --- | --- |
-| `packages/domain` | Entity、Value Object、A1 参照・数式・依存グラフ・差分再計算 |
-| `packages/usecases` | Workbook/WorkbookRevision の CRUD use case と repository port |
-| `packages/infra` | in-memory / SQLite WASM Worker / OPFS の repository adapter |
+| `packages/spreadsheet` | Domain、CRUD use case、repository port、SQLite adapterを含むスプレッドシート本体 |
 | `apps/web` | `presentation` の UI と `infra` の composition root |
 
-依存方向は `domain ← usecases ← infra ← apps/web` です。主な配置は次のとおりです。
+`packages/spreadsheet` の内部では `domain ← usecases ← infra` の依存方向を保ち、`apps/web` がそれらをcompositionします。主な配置は次のとおりです。
 
 ```text
-packages/domain/src/{entities,value-objects,services}
-packages/usecases/src/{workbooks,workbook-revisions,ports}
-packages/infra/src/{repositories,sqlite/worker}
+packages/spreadsheet/src/domain/{entities,value-objects,derived/calculation,services/calculation}
+packages/spreadsheet/src/usecases/{workbooks,workbook-revisions,ports}
+packages/spreadsheet/src/infra/{repositories,sqlite/worker}
 apps/web/src/{presentation,infra}
 ```
+
+各ファイルは原則として `<concept>.<role>.ts(x)` で命名します。たとえば `workbook.entity.ts`、`cell-address.vo.ts`、`recalculate.service.ts`、`create-workbook.usecase.ts`、`sqlite-workbook-repositories.adapter.ts` です。`index.ts`、`main.tsx`、テスト、スタイルシートは慣例名を使います。
 
 ## 初期版の数式範囲
 
