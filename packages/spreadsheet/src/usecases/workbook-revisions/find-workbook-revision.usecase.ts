@@ -1,7 +1,7 @@
 import type {
   WorkbookId,
   WorkbookRevision,
-} from "@gridline/domain";
+} from "@gridline/spreadsheet/domain";
 
 import type { SpreadsheetRepositories } from "../ports/spreadsheet-repositories.port";
 

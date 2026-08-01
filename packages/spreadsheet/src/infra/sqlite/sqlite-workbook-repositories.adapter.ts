@@ -3,14 +3,14 @@ import type {
   WorkbookRepository,
   WorkbookRevisionCreateResult,
   WorkbookRevisionRepository,
-} from "@gridline/usecases";
+} from "@gridline/spreadsheet/usecases";
 import type {
   Workbook,
   WorkbookChangeSet,
   CellId,
   WorkbookId,
   WorkbookRevision,
-} from "@gridline/domain";
+} from "@gridline/spreadsheet/domain";
 
 import {
   fromWorkbookDto,

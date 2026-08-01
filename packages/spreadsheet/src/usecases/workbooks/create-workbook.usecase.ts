@@ -1,4 +1,4 @@
-import type { Workbook } from "@gridline/domain";
+import type { Workbook } from "@gridline/spreadsheet/domain";
 
 import type {
   SpreadsheetRepositories,

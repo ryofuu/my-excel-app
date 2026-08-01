@@ -1,14 +1,14 @@
 {
-  "name": "@gridline/infra",
+  "name": "@gridline/spreadsheet",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    "./domain": "./src/domain/index.ts",
+    "./usecases": "./src/usecases/index.ts",
+    "./infra": "./src/infra/index.ts"
   },
   "dependencies": {
-    "@gridline/domain": "workspace:*",
-    "@gridline/usecases": "workspace:*",
     "@sqlite.org/sqlite-wasm": "latest"
   },
   "scripts": {

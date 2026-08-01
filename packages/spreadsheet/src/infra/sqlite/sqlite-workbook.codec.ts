@@ -12,8 +12,8 @@ import {
   type CellContent,
   type CellId,
   type WorkbookChangeSet,
-} from "@gridline/domain";
-import type { WorkbookSeed } from "@gridline/usecases";
+} from "@gridline/spreadsheet/domain";
+import type { WorkbookSeed } from "@gridline/spreadsheet/usecases";
 
 import type {
   CellStateDto,

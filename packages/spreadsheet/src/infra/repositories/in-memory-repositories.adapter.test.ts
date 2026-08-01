@@ -12,7 +12,7 @@ import {
   workbookName,
   worksheetId,
   worksheetName,
-} from "@gridline/domain";
+} from "@gridline/spreadsheet/domain";
 import { describe, expect, it } from "vitest";
 
 import { createInMemoryRepositories } from "./in-memory-repositories.adapter";

@@ -1,4 +1,4 @@
-import type { WorkbookId } from "@gridline/domain";
+import type { WorkbookId } from "@gridline/spreadsheet/domain";
 
 import type { SpreadsheetRepositories } from "../ports/spreadsheet-repositories.port";
 

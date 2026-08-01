@@ -6,7 +6,7 @@ import {
   type CellId,
   type WorkbookChangeSet,
   type WorkbookId,
-} from "@gridline/domain";
+} from "@gridline/spreadsheet/domain";
 
 import type {
   SpreadsheetRepositories,
@@ -14,7 +14,7 @@ import type {
   WorkbookRevisionCreateResult,
   WorkbookRevisionRepository,
   WorkbookSeed,
-} from "@gridline/usecases";
+} from "@gridline/spreadsheet/usecases";
 
 type StoredWorkbook = {
   workbook: Workbook;

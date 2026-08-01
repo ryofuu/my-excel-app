@@ -4,7 +4,7 @@ import type {
   WorkbookChangeSet,
   WorkbookId,
   WorkbookRevision,
-} from "@gridline/domain";
+} from "@gridline/spreadsheet/domain";
 
 /**
  * A workbook and its first input revision are created together.  A workbook

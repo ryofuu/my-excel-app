@@ -4,10 +4,10 @@ import {
   findWorkbook,
   findWorkbookRevision,
   type SpreadsheetRepositories,
-} from "@gridline/usecases";
+} from "@gridline/spreadsheet/usecases";
 import {
   createBrowserRepositories,
-} from "@gridline/infra";
+} from "@gridline/spreadsheet/infra";
 import {
   Cell,
   Workbook,
@@ -34,7 +34,7 @@ import {
   type CellId,
   type CellValue,
   type FormulaToken as EngineFormulaToken,
-} from "@gridline/domain";
+} from "@gridline/spreadsheet/domain";
 
 import type {
   CalculationInspection,

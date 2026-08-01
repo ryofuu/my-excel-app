@@ -1,4 +1,4 @@
-import type { WorkbookChangeSet } from "@gridline/domain";
+import type { WorkbookChangeSet } from "@gridline/spreadsheet/domain";
 
 import type {
   SpreadsheetRepositories,
