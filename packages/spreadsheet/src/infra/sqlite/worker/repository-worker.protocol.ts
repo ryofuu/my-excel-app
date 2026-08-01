@@ -1,9 +1,8 @@
 import type {
   WorkbookChangeSetDto,
-  WorkbookDto,
   WorkbookRevisionCreateDtoResult,
-  WorkbookRevisionDto,
   WorkbookSeedDto,
+  WorkbookStateDto,
 } from "../sqlite-workbook.dto";
 
 export type RepositoryCommand =
@@ -14,25 +13,16 @@ export type RepositoryCommand =
   | Readonly<{
       kind: "revision.create";
       changeSet: WorkbookChangeSetDto;
-    }>
-  | Readonly<{
-      kind: "revision.find";
-      workbookId: string;
-      revision: number;
     }>;
 
 export type RepositoryCommandResult =
   | Readonly<{ kind: "initialized"; storage: "opfs-sahpool" | "opfs" | "memory" }>
-  | Readonly<{ kind: "workbook.created"; workbook: WorkbookDto }>
-  | Readonly<{ kind: "workbook.found"; workbook: WorkbookDto | null }>
+  | Readonly<{ kind: "workbook.created"; state: WorkbookStateDto }>
+  | Readonly<{ kind: "workbook.found"; state: WorkbookStateDto | null }>
   | Readonly<{ kind: "workbook.deleted" }>
   | Readonly<{
       kind: "revision.created";
       result: WorkbookRevisionCreateDtoResult;
-    }>
-  | Readonly<{
-      kind: "revision.found";
-      revision: WorkbookRevisionDto | null;
     }>;
 
 export type RepositoryWorkerRequest = Readonly<{

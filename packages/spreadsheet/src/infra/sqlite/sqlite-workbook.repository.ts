@@ -6,6 +6,7 @@ import type {
   WorkbookRevisionCreateDtoResult,
   WorkbookRevisionDto,
   WorkbookSeedDto,
+  WorkbookStateDto,
   WorksheetDto,
 } from "./sqlite-workbook.dto";
 import { execute, query, transaction, type SqlDatabase, type SqlRow } from "./sqlite.database";
@@ -197,7 +198,7 @@ export const initializeDatabase = (database: SqlDatabase): void => {
 export const createWorkbookInDatabase = (
   database: SqlDatabase,
   seed: WorkbookSeedDto,
-): WorkbookDto =>
+): WorkbookStateDto =>
   transaction(database, () => {
     if (seed.workbook.id !== seed.revision.workbookId) {
       throw new RangeError("Workbook and initial revision must have the same id.");
@@ -237,13 +238,28 @@ export const createWorkbookInDatabase = (
       }
       persistCell(database, seed.workbook.id, cell, cell.modifiedRevision);
     }
-    return seed.workbook;
+    return seed;
   });
 
 export const findWorkbookInDatabase = (
   database: SqlDatabase,
   workbookId: string,
-): WorkbookDto | null => findWorkbookRow(database, workbookId);
+): WorkbookStateDto | null =>
+  transaction(database, () => {
+    const workbook = findWorkbookRow(database, workbookId);
+    if (!workbook) {
+      return null;
+    }
+    const revision = findRevision(
+      database,
+      workbook.id,
+      workbook.currentRevision,
+    );
+    if (!revision) {
+      throw new Error("Current WorkbookRevision could not be read from the database.");
+    }
+    return { workbook, revision };
+  });
 
 export const deleteWorkbookInDatabase = (
   database: SqlDatabase,
@@ -251,12 +267,6 @@ export const deleteWorkbookInDatabase = (
 ): void => {
   execute(database, "DELETE FROM workbooks WHERE id = ?", [workbookId]);
 };
-
-export const findWorkbookRevisionInDatabase = (
-  database: SqlDatabase,
-  workbookId: string,
-  revision: number,
-): WorkbookRevisionDto | null => findRevision(database, workbookId, revision);
 
 /**
  * Applies just the changed cell rows.  Tombstones remain in `cell_states`, so
@@ -312,5 +322,11 @@ export const createWorkbookRevisionInDatabase = (
     if (!revision) {
       throw new Error("Created revision could not be read from the database.");
     }
-    return { kind: "created", revision };
+    return {
+      kind: "created",
+      state: {
+        workbook: { ...workbook, currentRevision: nextRevision },
+        revision,
+      },
+    };
   });

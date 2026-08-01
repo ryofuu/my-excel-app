@@ -1,24 +1,17 @@
 import type {
   CellId,
-  Workbook,
   WorkbookChangeSet,
   WorkbookId,
-  WorkbookRevision,
 } from "@gridline/spreadsheet/domain";
-
-/**
- * A workbook and its first input revision are created together.  A workbook
- * without a revision would not have the required initial worksheet state.
- */
-export type WorkbookSeed = Readonly<{
-  workbook: Workbook;
-  revision: WorkbookRevision;
-}>;
+import type {
+  WorkbookSeed,
+  WorkbookState,
+} from "../workbooks/workbook-state.type";
 
 export type WorkbookRevisionCreateResult =
   | Readonly<{
       kind: "created";
-      revision: WorkbookRevision;
+      state: WorkbookState;
     }>
   | Readonly<{
       kind: "edit-conflict";
@@ -34,8 +27,8 @@ export type WorkbookRevisionCreateResult =
 
 /** Persists the workbook identity and the initial, complete input state. */
 export interface WorkbookRepository {
-  create(seed: WorkbookSeed): Promise<Workbook>;
-  find(id: WorkbookId): Promise<Workbook | null>;
+  create(seed: WorkbookSeed): Promise<WorkbookState>;
+  find(id: WorkbookId): Promise<WorkbookState | null>;
   delete(id: WorkbookId): Promise<void>;
 }
 
@@ -45,10 +38,6 @@ export interface WorkbookRepository {
  */
 export interface WorkbookRevisionRepository {
   create(changeSet: WorkbookChangeSet): Promise<WorkbookRevisionCreateResult>;
-  find(
-    workbookId: WorkbookId,
-    revision: number,
-  ): Promise<WorkbookRevision | null>;
 }
 
 export type SpreadsheetRepositories = Readonly<{

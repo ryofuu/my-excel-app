@@ -57,9 +57,14 @@ export const createInMemoryRepositories = (): SpreadsheetRepositories => {
         throw new Error(`Workbook already exists: ${seed.workbook.id}`);
       }
       storedWorkbooks.set(seed.workbook.id, createStoredWorkbook(seed));
-      return seed.workbook;
+      return { workbook: seed.workbook, revision: seed.revision };
     },
-    find: async (id) => storedWorkbooks.get(id)?.workbook ?? null,
+    find: async (id) => {
+      const stored = storedWorkbooks.get(id);
+      return stored
+        ? { workbook: stored.workbook, revision: stored.revision }
+        : null;
+    },
     delete: async (id) => {
       storedWorkbooks.delete(id);
     },
@@ -122,14 +127,7 @@ export const createInMemoryRepositories = (): SpreadsheetRepositories => {
         revision,
         cellStates: nextStates,
       });
-      return { kind: "created", revision };
-    },
-    find: async (workbookId, revision) => {
-      const stored = storedWorkbooks.get(workbookId);
-      if (!stored || Number(stored.revision.number) !== revision) {
-        return null;
-      }
-      return stored.revision;
+      return { kind: "created", state: { workbook, revision } };
     },
   };
 

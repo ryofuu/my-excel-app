@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createWorkbookInDatabase,
   createWorkbookRevisionInDatabase,
-  findWorkbookRevisionInDatabase,
+  findWorkbookInDatabase,
   initializeDatabase,
 } from "./sqlite-workbook.repository";
 import type { CellStateDto, WorkbookSeedDto } from "./sqlite-workbook.dto";
@@ -69,8 +69,8 @@ describe("SQLite workbook transaction semantics", () => {
     expect(first.kind).toBe("created");
     expect(second).toMatchObject({ kind: "created" });
     if (second.kind === "created") {
-      expect(second.revision.number).toBe(2);
-      expect(second.revision.cells.map((entry) => entry.cellId)).toEqual([
+      expect(second.state.revision.number).toBe(2);
+      expect(second.state.revision.cells.map((entry) => entry.cellId)).toEqual([
         "sheet-1!A1",
         "sheet-1!B1",
       ]);
@@ -100,8 +100,9 @@ describe("SQLite workbook transaction semantics", () => {
       kind: "edit-conflict",
       conflictingCellIds: ["sheet-1!A2"],
     });
-    expect(findWorkbookRevisionInDatabase(database, "workbook-1", 2)).toMatchObject({
-      cells: [],
+    expect(findWorkbookInDatabase(database, "workbook-1")).toMatchObject({
+      workbook: { currentRevision: 2 },
+      revision: { number: 2, cells: [] },
     });
   });
 });

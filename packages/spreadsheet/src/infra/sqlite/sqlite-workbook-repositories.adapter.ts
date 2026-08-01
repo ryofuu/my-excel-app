@@ -5,16 +5,13 @@ import type {
   WorkbookRevisionRepository,
 } from "@gridline/spreadsheet/usecases";
 import type {
-  Workbook,
   WorkbookChangeSet,
   CellId,
   WorkbookId,
-  WorkbookRevision,
 } from "@gridline/spreadsheet/domain";
 
 import {
-  fromWorkbookDto,
-  fromWorkbookRevisionDto,
+  fromWorkbookStateDto,
   toWorkbookChangeSetDto,
   toWorkbookSeedDto,
 } from "./sqlite-workbook.codec";
@@ -45,9 +42,9 @@ export const createSqliteWorkbookRepositories = (
       if (result.kind !== "workbook.created") {
         return unexpectedResult("workbook.created", result.kind);
       }
-      return fromWorkbookDto(result.workbook);
+      return fromWorkbookStateDto(result.state);
     },
-    find: async (id: WorkbookId): Promise<Workbook | null> => {
+    find: async (id: WorkbookId) => {
       const result = await client.execute({
         kind: "workbook.find",
         workbookId: String(id),
@@ -55,7 +52,7 @@ export const createSqliteWorkbookRepositories = (
       if (result.kind !== "workbook.found") {
         return unexpectedResult("workbook.found", result.kind);
       }
-      return result.workbook ? fromWorkbookDto(result.workbook) : null;
+      return result.state ? fromWorkbookStateDto(result.state) : null;
     },
     delete: async (id: WorkbookId): Promise<void> => {
       const result = await client.execute({
@@ -83,7 +80,7 @@ export const createSqliteWorkbookRepositories = (
         case "created":
           return {
             kind: "created",
-            revision: fromWorkbookRevisionDto(result.result.revision),
+            state: fromWorkbookStateDto(result.result.state),
           };
         case "edit-conflict":
           return {
@@ -95,20 +92,6 @@ export const createSqliteWorkbookRepositories = (
         case "revision-not-found":
           return result.result;
       }
-    },
-    find: async (
-      id: WorkbookId,
-      revision: number,
-    ): Promise<WorkbookRevision | null> => {
-      const result = await client.execute({
-        kind: "revision.find",
-        workbookId: String(id),
-        revision,
-      });
-      if (result.kind !== "revision.found") {
-        return unexpectedResult("revision.found", result.kind);
-      }
-      return result.revision ? fromWorkbookRevisionDto(result.revision) : null;
     },
   };
 

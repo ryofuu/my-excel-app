@@ -13,7 +13,10 @@ import {
   type CellId,
   type WorkbookChangeSet,
 } from "@gridline/spreadsheet/domain";
-import type { WorkbookSeed } from "@gridline/spreadsheet/usecases";
+import type {
+  WorkbookSeed,
+  WorkbookState,
+} from "@gridline/spreadsheet/usecases";
 
 import type {
   CellStateDto,
@@ -21,6 +24,7 @@ import type {
   WorkbookDto,
   WorkbookRevisionDto,
   WorkbookSeedDto,
+  WorkbookStateDto,
 } from "./sqlite-workbook.dto";
 
 const toCellStateDto = (cell: Cell): CellStateDto => {
@@ -96,6 +100,13 @@ export const fromWorkbookRevisionDto = (
 export const toWorkbookSeedDto = (seed: WorkbookSeed): WorkbookSeedDto => ({
   workbook: toWorkbookDto(seed.workbook),
   revision: toWorkbookRevisionDto(seed.revision),
+});
+
+export const fromWorkbookStateDto = (
+  state: WorkbookStateDto,
+): WorkbookState => ({
+  workbook: fromWorkbookDto(state.workbook),
+  revision: fromWorkbookRevisionDto(state.revision),
 });
 
 export const toWorkbookChangeSetDto = (

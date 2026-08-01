@@ -5,7 +5,6 @@ import {
   createWorkbookRevisionInDatabase,
   deleteWorkbookInDatabase,
   findWorkbookInDatabase,
-  findWorkbookRevisionInDatabase,
   initializeDatabase,
 } from "../sqlite-workbook.repository";
 import type { SqlDatabase } from "../sqlite.database";
@@ -101,12 +100,12 @@ const executeCommand = async (
     case "workbook.create":
       return {
         kind: "workbook.created",
-        workbook: createWorkbookInDatabase(database, command.seed),
+        state: createWorkbookInDatabase(database, command.seed),
       };
     case "workbook.find":
       return {
         kind: "workbook.found",
-        workbook: findWorkbookInDatabase(database, command.workbookId),
+        state: findWorkbookInDatabase(database, command.workbookId),
       };
     case "workbook.delete":
       deleteWorkbookInDatabase(database, command.workbookId);
@@ -115,15 +114,6 @@ const executeCommand = async (
       return {
         kind: "revision.created",
         result: createWorkbookRevisionInDatabase(database, command.changeSet),
-      };
-    case "revision.find":
-      return {
-        kind: "revision.found",
-        revision: findWorkbookRevisionInDatabase(
-          database,
-          command.workbookId,
-          command.revision,
-        ),
       };
   }
 };
