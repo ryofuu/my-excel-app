@@ -305,8 +305,8 @@ export function createEngineSpreadsheetClient(): SpreadsheetClient {
       worksheetName: current.revision.worksheets[0]?.name ?? "Sheet1",
       revision: Number(current.revision.number),
       cells,
-      dirtyCells: current.snapshot.dirtyCellIds.map(cellAddressFor),
-      evaluationOrder: current.snapshot.evaluationOrder.map(cellAddressFor),
+      dirtyCells: current.snapshot.trace.dirtyCellIds.map(cellAddressFor),
+      evaluationOrder: current.snapshot.trace.evaluationOrder.map(cellAddressFor),
     };
   };
 
@@ -335,8 +335,8 @@ export function createEngineSpreadsheetClient(): SpreadsheetClient {
             : null,
       precedents: dependencies.map(dependencyLabel),
       dependents: dependentsOf(current.snapshot.graph, id).map(cellAddressFor),
-      dirtyCells: current.snapshot.dirtyCellIds.map(cellAddressFor),
-      evaluationOrder: current.snapshot.evaluationOrder.map(cellAddressFor),
+      dirtyCells: current.snapshot.trace.dirtyCellIds.map(cellAddressFor),
+      evaluationOrder: current.snapshot.trace.evaluationOrder.map(cellAddressFor),
       errors,
     };
   };

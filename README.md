@@ -31,7 +31,7 @@ pnpm build
 依存方向は `domain ← usecases ← infra ← apps/web` です。主な配置は次のとおりです。
 
 ```text
-packages/domain/src/{entities,value-objects,services}
+packages/domain/src/{entities,value-objects,derived/calculation,services/calculation}
 packages/usecases/src/{workbooks,workbook-revisions,ports}
 packages/infra/src/{repositories,sqlite/worker}
 apps/web/src/{presentation,infra}

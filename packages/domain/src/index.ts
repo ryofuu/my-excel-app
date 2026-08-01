@@ -102,9 +102,6 @@ export {
 } from "./value-objects/formula/translate";
 
 export {
-  compileRevision,
-  dependenciesInExpression,
-  dependentsOf,
   type CellDependency,
   type CompiledRevision,
   type Dependency,
@@ -112,11 +109,22 @@ export {
   type FormulaAnalysis,
   type RangeDependency,
   type RangeDependent,
-} from "./services/calculation/dependency";
+} from "./derived/calculation/dependency-graph";
 
 export {
-  recalculate,
+  type CalculationTrace,
+} from "./derived/calculation/calculation-trace";
+
+export {
   valueInSnapshot,
   type CalculationSnapshot,
   type PreviousCalculation,
-} from "./services/calculation/recalculate";
+} from "./derived/calculation/calculation-snapshot";
+
+export {
+  compileRevision,
+  dependenciesInExpression,
+  dependentsOf,
+} from "./services/calculation/compile-revision";
+
+export { recalculate } from "./services/calculation/recalculate";

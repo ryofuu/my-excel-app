@@ -100,7 +100,7 @@ describe("calculation integration", () => {
 
     expect(value(snapshot, "B1")).toEqual({ kind: "number", value: 5 });
     expect(value(snapshot, "C1")).toEqual({ kind: "number", value: 7 });
-    expect(snapshot.evaluationOrder).toEqual([idFor("B1"), idFor("C1")]);
+    expect(snapshot.trace.evaluationOrder).toEqual([idFor("B1"), idFor("C1")]);
 
     const compiled = compileRevision(source);
     expect(compiled.graph.rangeDependents).toHaveLength(1);
@@ -123,8 +123,8 @@ describe("calculation integration", () => {
     const secondSnapshot = recalculate(second, { revision: first, snapshot: firstSnapshot });
 
     expect(value(secondSnapshot, "C1")).toEqual({ kind: "number", value: 7 });
-    expect(secondSnapshot.dirtyCellIds).toEqual([idFor("A1"), idFor("B1"), idFor("C1")]);
-    expect(secondSnapshot.evaluationOrder).toEqual([idFor("A1"), idFor("B1"), idFor("C1")]);
+    expect(secondSnapshot.trace.dirtyCellIds).toEqual([idFor("A1"), idFor("B1"), idFor("C1")]);
+    expect(secondSnapshot.trace.evaluationOrder).toEqual([idFor("A1"), idFor("B1"), idFor("C1")]);
   });
 
   it("evaluates only affected formulas after a literal edit", () => {
@@ -145,8 +145,8 @@ describe("calculation integration", () => {
 
     expect(value(secondSnapshot, "C1")).toEqual({ kind: "number", value: 10 });
     expect(value(secondSnapshot, "D1")).toEqual({ kind: "number", value: 11 });
-    expect(secondSnapshot.dirtyCellIds).toEqual([idFor("A1"), idFor("B1"), idFor("C1")]);
-    expect(secondSnapshot.evaluationOrder).toEqual([idFor("B1"), idFor("C1")]);
+    expect(secondSnapshot.trace.dirtyCellIds).toEqual([idFor("A1"), idFor("B1"), idFor("C1")]);
+    expect(secondSnapshot.trace.evaluationOrder).toEqual([idFor("B1"), idFor("C1")]);
   });
 
   it("uses a symbolic range dependency to invalidate a SUM when one member changes", () => {
@@ -167,7 +167,7 @@ describe("calculation integration", () => {
 
     expect(value(secondSnapshot, "B1")).toEqual({ kind: "number", value: 6 });
     expect(value(secondSnapshot, "C1")).toEqual({ kind: "number", value: 12 });
-    expect(secondSnapshot.dirtyCellIds).toEqual([idFor("A2"), idFor("B1"), idFor("C1")]);
+    expect(secondSnapshot.trace.dirtyCellIds).toEqual([idFor("A2"), idFor("B1"), idFor("C1")]);
   });
 
   it("detects cycles, preserves the origin while propagating its error, and leaves no stale value", () => {
@@ -178,7 +178,7 @@ describe("calculation integration", () => {
     });
     const snapshot = recalculate(source);
 
-    expect(snapshot.cycles).toEqual([[idFor("A1"), idFor("B1")]]);
+    expect(snapshot.trace.cycles).toEqual([[idFor("A1"), idFor("B1")]]);
     expect(value(snapshot, "A1")).toMatchObject({ kind: "error", code: "circular-reference", origin: idFor("A1") });
     expect(value(snapshot, "B1")).toMatchObject({ kind: "error", code: "circular-reference", origin: idFor("B1") });
     expect(value(snapshot, "C1")).toMatchObject({ kind: "error", code: "circular-reference", origin: idFor("A1") });

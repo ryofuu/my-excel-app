@@ -17,29 +17,19 @@ import {
 import type { BinaryOperator, Expression } from "../../value-objects/formula/ast";
 import type { WorkbookRevision } from "../../entities/workbook-revision";
 import {
-  compileRevision,
-  dependentsOf,
-  type CompiledRevision,
-  type Dependency,
-  type DependencyGraph,
-  type FormulaAnalysis,
-  type RangeDependency,
-} from "./dependency";
-
-export type CalculationSnapshot = Readonly<{
-  sourceRevision: WorkbookRevision["number"];
-  values: ReadonlyMap<CellId, CellValue>;
-  formulas: ReadonlyMap<CellId, FormulaAnalysis>;
-  graph: DependencyGraph;
-  dirtyCellIds: readonly CellId[];
-  evaluationOrder: readonly CellId[];
-  cycles: readonly (readonly CellId[])[];
-}>;
-
-export type PreviousCalculation = Readonly<{
-  revision: WorkbookRevision;
-  snapshot: CalculationSnapshot;
-}>;
+  calculationSnapshot,
+  type CalculationSnapshot,
+  type PreviousCalculation,
+} from "../../derived/calculation/calculation-snapshot";
+import { calculationTrace } from "../../derived/calculation/calculation-trace";
+import type {
+  CompiledRevision,
+  Dependency,
+  DependencyGraph,
+  FormulaAnalysis,
+  RangeDependency,
+} from "../../derived/calculation/dependency-graph";
+import { compileRevision, dependentsOf } from "./compile-revision";
 
 type RangeValue = Readonly<{
   kind: "range-value";
@@ -53,9 +43,6 @@ const contentAt = (revision: WorkbookRevision, id: CellId): CellContent | null =
 
 const valueAt = (values: ReadonlyMap<CellId, CellValue>, id: CellId): CellValue =>
   values.get(id) ?? BLANK;
-
-export const valueInSnapshot = (snapshot: CalculationSnapshot, id: CellId): CellValue =>
-  valueAt(snapshot.values, id);
 
 const changedCellIds = (previous: WorkbookRevision, next: WorkbookRevision): readonly CellId[] => {
   const ids = new Set<CellId>([...previous.cells.keys(), ...next.cells.keys()]);
@@ -530,13 +517,15 @@ export const recalculate = (
     evaluationOrder.push(formulaId);
   }
 
-  return {
+  return calculationSnapshot({
     sourceRevision: revision.number,
     values,
     formulas: compiled.formulas,
     graph: compiled.graph,
-    dirtyCellIds: Object.freeze([...dirtyCellIds]),
-    evaluationOrder: Object.freeze(evaluationOrder),
-    cycles: Object.freeze(cycles.map((component) => Object.freeze([...component]))),
-  };
+    trace: calculationTrace({
+      dirtyCellIds,
+      evaluationOrder,
+      cycles,
+    }),
+  });
 };
