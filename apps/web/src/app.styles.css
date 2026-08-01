@@ -182,7 +182,7 @@ pre { font-family: "IBM Plex Mono", "SFMono-Regular", monospace; }
 .sheet-row-canvas { position: relative; width: 48px; will-change: transform; }
 .sheet-row-header { position: absolute; left: 0; display: flex; width: 48px; align-items: center; justify-content: center; border-bottom: 1px solid var(--line); color: #667267; font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 500; }
 .sheet-header--selected { background: #dcefe2; color: #0f6038; font-weight: 700; }
-.sheet-scroll-viewport { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; outline: none; scrollbar-color: #bdc9bc transparent; scrollbar-width: thin; }
+.sheet-scroll-viewport { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; outline: none; scrollbar-color: #bdc9bc transparent; scrollbar-width: thin; user-select: none; }
 .sheet-scroll-viewport:focus { box-shadow: inset 0 0 0 2px rgba(22,116,69,.18); }
 .sheet-canvas { position: relative; background-color: #fff; background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px); }
 .sheet-cell { position: absolute; display: flex; min-width: 0; align-items: center; padding: 0 7px; color: #213025; font-size: 12px; line-height: 1; }
@@ -194,9 +194,15 @@ pre { font-family: "IBM Plex Mono", "SFMono-Regular", monospace; }
 .sheet-cell--error .sheet-cell-value { color: var(--danger); font-weight: 600; }
 .sheet-cell--error::before { position: absolute; top: 0; right: 0; z-index: 2; width: 0; height: 0; border-top: 6px solid var(--danger); border-left: 6px solid transparent; content: ""; }
 .sheet-cell--demo-header { background: #edf5ee; color: #294634; font-weight: 600; }
-.sheet-cell--selected { z-index: 5; background: rgba(218,239,224,.42); }
-.sheet-cell--selected::after { border-color: var(--selection); box-shadow: 0 0 0 1px rgba(255,255,255,.74), inset 0 0 0 1px rgba(255,255,255,.2); }
-.sheet-cell--selected::before { position: absolute; right: -3px; bottom: -3px; z-index: 6; width: 6px; height: 6px; border: 1px solid white; background: var(--selection); content: ""; }
+.sheet-cell--selected { z-index: 4; background: rgba(218,239,224,.5); }
+.sheet-cell--selected::after { border: 0 solid var(--selection); }
+.sheet-cell--range-top::after { border-top-width: 2px; }
+.sheet-cell--range-right::after { border-right-width: 2px; }
+.sheet-cell--range-bottom::after { border-bottom-width: 2px; }
+.sheet-cell--range-left::after { border-left-width: 2px; }
+.sheet-cell--active { z-index: 5; background: rgba(255,255,255,.82); box-shadow: inset 0 0 0 1px rgba(22,116,69,.58); }
+.sheet-fill-handle { position: absolute; right: -3px; bottom: -3px; z-index: 7; width: 6px; height: 6px; border: 1px solid white; background: var(--selection); pointer-events: none; }
+.sheet-clipboard-input { position: fixed; top: 0; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 .sheet-cell-editor { position: absolute; z-index: 9; inset: 0; width: 100%; border: 2px solid var(--selection); outline: none; padding: 0 5px; background: white; color: #172018; font-family: "IBM Plex Mono", monospace; font-size: 12px; box-shadow: 0 1px 5px rgba(16,55,32,.15); }
 
 .calculation-inspector { display: flex; min-width: 0; min-height: 0; flex-direction: column; border-left: 1px solid var(--line-strong); background: #fbfcf9; }

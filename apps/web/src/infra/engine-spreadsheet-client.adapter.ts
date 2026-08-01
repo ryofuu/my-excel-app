@@ -183,33 +183,38 @@ export function createEngineSpreadsheetClient(
       return workbookView(state, formulaLaboratoryWorksheetId);
     },
 
-    async createCell({ address, input, copiedFromAddress }: CellInput) {
+    async createCells(inputs: readonly CellInput[]) {
       const current = await readyState();
-      const target = cellId(
-        formulaLaboratoryWorksheetId,
-        parseA1Address(address),
-      );
-      const translatedInput =
-        copiedFromAddress === undefined || !input.startsWith("=")
-          ? input
-          : (() => {
-              const translation = translateFormula(
-                formulaSource(input),
-                parseA1Address(copiedFromAddress),
-                parseA1Address(address),
-              );
-              if (translation.kind === "error") {
-                throw new Error(translation.message);
-              }
-              return translation.source;
-            })();
-      const content = parseCellInput(translatedInput);
+      if (inputs.length === 0) {
+        return workbookView(current, formulaLaboratoryWorksheetId);
+      }
+      const cellChanges = inputs.map(({ address, input, copiedFromAddress }) => {
+        const target = cellId(
+          formulaLaboratoryWorksheetId,
+          parseA1Address(address),
+        );
+        const translatedInput =
+          copiedFromAddress === undefined || !input.startsWith("=")
+            ? input
+            : (() => {
+                const translation = translateFormula(
+                  formulaSource(input),
+                  parseA1Address(copiedFromAddress),
+                  parseA1Address(address),
+                );
+                if (translation.kind === "error") {
+                  throw new Error(translation.message);
+                }
+                return translation.source;
+              })();
+        return { cellId: target, content: parseCellInput(translatedInput) };
+      });
       const result = await createWorkbookRevision(
         await repositories(),
         workbookChangeSet({
           workbookId: current.workbook.id,
           baseRevision: current.revision.number,
-          cellChanges: [{ cellId: target, content }],
+          cellChanges,
         }),
       );
       assertActive();

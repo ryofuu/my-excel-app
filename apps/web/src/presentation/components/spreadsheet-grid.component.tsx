@@ -6,7 +6,15 @@ import {
   formatValue,
   parseAddress,
 } from "@/presentation/spreadsheet/spreadsheet-grid.utility";
-import type { WorkbookView } from "@/usecases/spreadsheet-client.port";
+import {
+  selectedAddresses,
+  selectionBounds,
+  type SpreadsheetSelection,
+} from "@/presentation/spreadsheet/spreadsheet-selection.utility";
+import type {
+  CellInput,
+  WorkbookView,
+} from "@/usecases/spreadsheet-client.port";
 
 const ROW_HEADER_WIDTH = 48;
 const COLUMN_HEADER_HEIGHT = 26;
@@ -16,14 +24,17 @@ const OVERSCAN = 3;
 
 type SpreadsheetGridProps = {
   readonly workbook: WorkbookView | null;
-  readonly selectedAddress: string;
+  readonly selection: SpreadsheetSelection;
   readonly columnCount: number;
   readonly rowCount: number;
   readonly zoom: number;
-  readonly onSelect: (address: string) => void;
-  readonly onCommit: (address: string, input: string) => Promise<void>;
+  readonly onSelect: (selection: SpreadsheetSelection) => void;
+  readonly onCommit: (
+    inputs: readonly CellInput[],
+    inspectedAddress: string,
+  ) => Promise<void>;
   readonly onCopy: () => void;
-  readonly onPaste: () => void;
+  readonly onPaste: (text?: string) => void;
 };
 
 type EditingCell = {
@@ -44,9 +55,12 @@ function nextAddress(address: string, key: "ArrowUp" | "ArrowDown" | "ArrowLeft"
   return cellAddress({ column, row });
 }
 
-export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCount, zoom, onSelect, onCommit, onCopy, onPaste }: SpreadsheetGridProps) {
+export function SpreadsheetGrid({ workbook, selection, columnCount, rowCount, zoom, onSelect, onCommit, onCopy, onPaste }: SpreadsheetGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const clipboardRef = useRef<HTMLTextAreaElement>(null);
   const committingRef = useRef(false);
+  const dragAnchorRef = useRef<string | null>(null);
+  const dragPointerRef = useRef<number | null>(null);
   const [scroll, setScroll] = useState({ left: 0, top: 0 });
   const [viewport, setViewport] = useState({ width: 960, height: 560 });
   const [editing, setEditing] = useState<EditingCell | null>(null);
@@ -67,8 +81,8 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
   }, []);
 
   useEffect(() => {
-    if (editing && editing.address !== selectedAddress) setEditing(null);
-  }, [editing, selectedAddress]);
+    if (editing && editing.address !== selection.anchor) setEditing(null);
+  }, [editing, selection.anchor]);
 
   const ranges = useMemo(() => {
     const startColumn = clamp(Math.floor(scroll.left / columnWidth) + 1 - OVERSCAN, 1, columnCount);
@@ -78,7 +92,7 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
     return { startColumn, endColumn, startRow, endRow };
   }, [columnCount, columnWidth, rowCount, rowHeight, scroll, viewport]);
 
-  const selectedCoordinate = parseAddress(selectedAddress) ?? { column: 1, row: 1 };
+  const selectedBounds = useMemo(() => selectionBounds(selection), [selection]);
 
   const reveal = useCallback((address: string) => {
     const cell = parseAddress(address);
@@ -94,17 +108,17 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
     if (bottom > scroller.scrollTop + scroller.clientHeight) scroller.scrollTop = bottom - scroller.clientHeight;
   }, [columnWidth, rowHeight]);
 
-  useEffect(() => reveal(selectedAddress), [reveal, selectedAddress]);
+  useEffect(() => reveal(selection.focus), [reveal, selection.focus]);
 
-  const selectCell = useCallback((address: string) => {
-    onSelect(address);
+  const selectCells = useCallback((nextSelection: SpreadsheetSelection) => {
+    onSelect(nextSelection);
     scrollRef.current?.focus({ preventScroll: true });
   }, [onSelect]);
 
   const startEditing = useCallback((address: string, replacement?: string) => {
     const existing = workbook?.cells.get(address)?.input ?? "";
     setEditing({ address, draft: replacement ?? existing });
-    onSelect(address);
+    onSelect({ anchor: address, focus: address });
   }, [onSelect, workbook]);
 
   const completeEditing = useCallback(async (move?: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Tab" | "Enter") => {
@@ -112,32 +126,78 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
     if (!active || committingRef.current) return;
     committingRef.current = true;
     try {
-      await onCommit(active.address, active.draft);
+      await onCommit(
+        [{ address: active.address, input: active.draft }],
+        active.address,
+      );
       setEditing(null);
-      if (move) selectCell(nextAddress(active.address, move, columnCount, rowCount));
+      if (move) {
+        const address = nextAddress(active.address, move, columnCount, rowCount);
+        selectCells({ anchor: address, focus: address });
+      }
       else scrollRef.current?.focus({ preventScroll: true });
     } finally {
       committingRef.current = false;
     }
-  }, [columnCount, editing, onCommit, rowCount, selectCell]);
+  }, [columnCount, editing, onCommit, rowCount, selectCells]);
 
   const cancelEditing = useCallback(() => {
     setEditing(null);
     scrollRef.current?.focus({ preventScroll: true });
   }, []);
 
-  const selectFromPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (editing) return;
+  const addressFromPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     const column = clamp(Math.floor((event.clientX - bounds.left + event.currentTarget.scrollLeft) / columnWidth) + 1, 1, columnCount);
     const row = clamp(Math.floor((event.clientY - bounds.top + event.currentTarget.scrollTop) / rowHeight) + 1, 1, rowCount);
-    selectCell(cellAddress({ column, row }));
-  }, [columnCount, columnWidth, editing, rowCount, rowHeight, selectCell]);
+    return cellAddress({ column, row });
+  }, [columnCount, columnWidth, rowCount, rowHeight]);
+
+  const startPointerSelection = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (editing || event.button !== 0) return;
+    event.preventDefault();
+    const address = addressFromPointer(event);
+    const anchor = event.shiftKey ? selection.anchor : address;
+    dragAnchorRef.current = anchor;
+    dragPointerRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    selectCells({ anchor, focus: address });
+  }, [addressFromPointer, editing, selectCells, selection.anchor]);
+
+  const movePointerSelection = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (
+      dragPointerRef.current !== event.pointerId ||
+      dragAnchorRef.current === null ||
+      (event.buttons & 1) === 0
+    ) {
+      return;
+    }
+    selectCells({
+      anchor: dragAnchorRef.current,
+      focus: addressFromPointer(event),
+    });
+  }, [addressFromPointer, selectCells]);
+
+  const finishPointerSelection = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragPointerRef.current !== event.pointerId) return;
+    dragAnchorRef.current = null;
+    dragPointerRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
 
   const renderCell = (column: number, row: number) => {
     const address = cellAddress({ column, row });
     const cell = workbook?.cells.get(address);
-    const isSelected = address === selectedAddress;
+    const isSelected =
+      column >= selectedBounds.startColumn &&
+      column <= selectedBounds.endColumn &&
+      row >= selectedBounds.startRow &&
+      row <= selectedBounds.endRow;
+    const isActive = address === selection.anchor;
+    const isRangeEnd =
+      column === selectedBounds.endColumn && row === selectedBounds.endRow;
     const isEditing = editing?.address === address;
     const isError = cell?.value.kind === "error";
     const isNumeric = cell?.value.kind === "number";
@@ -152,11 +212,18 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
         className={[
           "sheet-cell",
           isSelected ? "sheet-cell--selected" : "",
+          isActive ? "sheet-cell--active" : "",
+          isSelected && row === selectedBounds.startRow ? "sheet-cell--range-top" : "",
+          isSelected && column === selectedBounds.endColumn ? "sheet-cell--range-right" : "",
+          isSelected && row === selectedBounds.endRow ? "sheet-cell--range-bottom" : "",
+          isSelected && column === selectedBounds.startColumn ? "sheet-cell--range-left" : "",
+          isRangeEnd ? "sheet-cell--range-end" : "",
           isError ? "sheet-cell--error" : "",
           isNumeric ? "sheet-cell--number" : "",
           hasFormula ? "sheet-cell--formula" : "",
           isDemoHeader ? "sheet-cell--demo-header" : "",
         ].filter(Boolean).join(" ")}
+        id={`cell-${address}`}
         key={address}
         onDoubleClick={() => startEditing(address)}
         role="gridcell"
@@ -190,6 +257,9 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
         ) : (
           <span className="sheet-cell-value">{cell ? formatValue(cell.value) : ""}</span>
         )}
+        {isRangeEnd && !isEditing && (
+          <span aria-hidden="true" className="sheet-fill-handle" />
+        )}
       </div>
     );
   };
@@ -205,7 +275,7 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
   for (let column = ranges.startColumn; column <= ranges.endColumn; column += 1) {
     columns.push(
       <div
-        className={`sheet-column-header ${selectedCoordinate.column === column ? "sheet-header--selected" : ""}`}
+        className={`sheet-column-header ${column >= selectedBounds.startColumn && column <= selectedBounds.endColumn ? "sheet-header--selected" : ""}`}
         key={column}
         style={{ left: (column - 1) * columnWidth, width: columnWidth }}
       >
@@ -218,7 +288,7 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
   for (let row = ranges.startRow; row <= ranges.endRow; row += 1) {
     rows.push(
       <div
-        className={`sheet-row-header ${selectedCoordinate.row === row ? "sheet-header--selected" : ""}`}
+        className={`sheet-row-header ${row >= selectedBounds.startRow && row <= selectedBounds.endRow ? "sheet-header--selected" : ""}`}
         key={row}
         style={{ top: (row - 1) * rowHeight, height: rowHeight }}
       >
@@ -243,7 +313,7 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
         </div>
       </div>
       <div
-        aria-activedescendant={`cell-${selectedAddress}`}
+        aria-activedescendant={`cell-${selection.anchor}`}
         aria-colcount={columnCount}
         aria-rowcount={rowCount}
         className="sheet-scroll-viewport"
@@ -254,8 +324,7 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
               onCopy();
             }
             if (event.key.toLowerCase() === "v") {
-              event.preventDefault();
-              onPaste();
+              clipboardRef.current?.focus({ preventScroll: true });
             }
             return;
           }
@@ -263,25 +332,51 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
           const navigationKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "Enter"] as const;
           if (navigationKeys.includes(event.key as (typeof navigationKeys)[number])) {
             event.preventDefault();
-            selectCell(nextAddress(selectedAddress, event.key as (typeof navigationKeys)[number], columnCount, rowCount));
+            const key = event.key as (typeof navigationKeys)[number];
+            const extendsRange = event.shiftKey && key.startsWith("Arrow");
+            const address = nextAddress(
+              extendsRange ? selection.focus : selection.anchor,
+              key,
+              columnCount,
+              rowCount,
+            );
+            selectCells(
+              extendsRange
+                ? { anchor: selection.anchor, focus: address }
+                : { anchor: address, focus: address },
+            );
             return;
           }
           if (event.key === "F2") {
             event.preventDefault();
-            startEditing(selectedAddress);
+            startEditing(selection.anchor);
             return;
           }
           if (event.key === "Delete" || event.key === "Backspace") {
             event.preventDefault();
-            void onCommit(selectedAddress, "");
+            void onCommit(
+              selectedAddresses(selection).map((address) => ({
+                address,
+                input: "",
+              })),
+              selection.anchor,
+            );
             return;
           }
           if (event.key.length === 1) {
             event.preventDefault();
-            startEditing(selectedAddress, event.key);
+            startEditing(selection.anchor, event.key);
           }
         }}
-        onPointerDown={selectFromPointer}
+        onPaste={(event) => {
+          if (editing) return;
+          event.preventDefault();
+          onPaste(event.clipboardData.getData("text/plain"));
+        }}
+        onPointerCancel={finishPointerSelection}
+        onPointerDown={startPointerSelection}
+        onPointerMove={movePointerSelection}
+        onPointerUp={finishPointerSelection}
         onScroll={(event) => setScroll({ left: event.currentTarget.scrollLeft, top: event.currentTarget.scrollTop })}
         ref={scrollRef}
         role="grid"
@@ -298,6 +393,18 @@ export function SpreadsheetGrid({ workbook, selectedAddress, columnCount, rowCou
           {cells}
         </div>
       </div>
+      <textarea
+        aria-label="Spreadsheet clipboard"
+        className="sheet-clipboard-input"
+        onPaste={(event) => {
+          event.preventDefault();
+          onPaste(event.clipboardData.getData("text/plain"));
+          event.currentTarget.value = "";
+          scrollRef.current?.focus({ preventScroll: true });
+        }}
+        ref={clipboardRef}
+        tabIndex={-1}
+      />
     </section>
   );
 }

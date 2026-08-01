@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   CalculationInspection,
+  CellInput,
   SpreadsheetClient,
   WorkbookView,
 } from "@/usecases/spreadsheet-client.port";
+import type { SpreadsheetSelection } from "@/presentation/spreadsheet/spreadsheet-selection.utility";
 
 const emptyInspection = (address: string): CalculationInspection => ({
   address,
@@ -20,7 +22,10 @@ const emptyInspection = (address: string): CalculationInspection => ({
 
 export function useSpreadsheet(client: SpreadsheetClient) {
   const [workbook, setWorkbook] = useState<WorkbookView | null>(null);
-  const [selectedAddress, setSelectedAddress] = useState("A1");
+  const [selection, setSelection] = useState<SpreadsheetSelection>({
+    anchor: "A1",
+    focus: "A1",
+  });
   const [inspection, setInspection] = useState<CalculationInspection>(() => emptyInspection("A1"));
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -59,21 +64,20 @@ export function useSpreadsheet(client: SpreadsheetClient) {
     };
   }, [client, inspect]);
 
-  const select = useCallback((address: string) => {
-    setSelectedAddress(address);
-    void inspect(address);
+  const select = useCallback((next: SpreadsheetSelection) => {
+    setSelection(next);
+    void inspect(next.anchor);
   }, [inspect]);
 
   const commit = useCallback(async (
-    address: string,
-    input: string,
-    copiedFromAddress?: string,
+    inputs: readonly CellInput[],
+    inspectedAddress: string,
   ) => {
     setIsCalculating(true);
     try {
-      const next = await client.createCell({ address, input, copiedFromAddress });
+      const next = await client.createCells(inputs);
       setWorkbook(next);
-      await inspect(address);
+      await inspect(inspectedAddress);
       setPulse((value) => value + 1);
       setError(null);
     } catch (reason) {
@@ -88,7 +92,7 @@ export function useSpreadsheet(client: SpreadsheetClient) {
     try {
       const next = await client.recalculate();
       setWorkbook(next);
-      await inspect(selectedAddress);
+      await inspect(selection.anchor);
       setPulse((value) => value + 1);
       setError(null);
     } catch (reason) {
@@ -96,16 +100,17 @@ export function useSpreadsheet(client: SpreadsheetClient) {
     } finally {
       setIsCalculating(false);
     }
-  }, [client, inspect, selectedAddress]);
+  }, [client, inspect, selection.anchor]);
 
   const selectedCell = useMemo(
-    () => workbook?.cells.get(selectedAddress),
-    [selectedAddress, workbook],
+    () => workbook?.cells.get(selection.anchor),
+    [selection.anchor, workbook],
   );
 
   return {
     workbook,
-    selectedAddress,
+    selection,
+    selectedAddress: selection.anchor,
     selectedCell,
     inspection,
     isLoading,

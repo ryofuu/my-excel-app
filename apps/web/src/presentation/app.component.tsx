@@ -12,7 +12,17 @@ import {
   DEFAULT_COLUMN_COUNT,
   DEFAULT_ROW_COUNT,
 } from "@/presentation/spreadsheet/spreadsheet-grid.utility";
-import type { SpreadsheetClient } from "@/usecases/spreadsheet-client.port";
+import {
+  cellInputsForPaste,
+  spreadsheetClipboard,
+  spreadsheetClipboardFromText,
+  type SpreadsheetClipboard,
+} from "@/presentation/spreadsheet/spreadsheet-clipboard.utility";
+import { selectionLabel, type SpreadsheetSelection } from "@/presentation/spreadsheet/spreadsheet-selection.utility";
+import type {
+  CellInput,
+  SpreadsheetClient,
+} from "@/usecases/spreadsheet-client.port";
 
 type AppProps = Readonly<{
   client: SpreadsheetClient;
@@ -23,38 +33,49 @@ export default function App({ client }: AppProps) {
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [formulaEditing, setFormulaEditing] = useState(false);
   const [zoom, setZoom] = useState(1);
-  const [copiedCell, setCopiedCell] = useState<
-    Readonly<{ address: string; input: string }> | null
-  >(null);
+  const [copiedCells, setCopiedCells] = useState<SpreadsheetClipboard | null>(null);
 
-  const select = (address: string) => {
+  const select = (selection: SpreadsheetSelection) => {
     setFormulaEditing(false);
-    spreadsheet.select(address);
+    spreadsheet.select(selection);
   };
 
   const commit = async (
-    address: string,
-    input: string,
-    copiedFromAddress?: string,
+    inputs: readonly CellInput[],
+    inspectedAddress: string,
   ) => {
     setFormulaEditing(false);
-    await spreadsheet.commit(address, input, copiedFromAddress);
+    await spreadsheet.commit(inputs, inspectedAddress);
   };
 
-  const copySelectedCell = () => {
-    setCopiedCell({
-      address: spreadsheet.selectedAddress,
-      input: spreadsheet.selectedCell?.input ?? "",
-    });
-  };
-
-  const pasteCopiedCell = async () => {
-    if (copiedCell === null) return;
-    await commit(
-      spreadsheet.selectedAddress,
-      copiedCell.input,
-      copiedCell.address,
+  const copySelection = async () => {
+    if (spreadsheet.workbook === null) return;
+    const clipboard = spreadsheetClipboard(
+      spreadsheet.workbook,
+      spreadsheet.selection,
     );
+    setCopiedCells(clipboard);
+    try {
+      await navigator.clipboard?.writeText(clipboard.text);
+    } catch {
+      // The in-app clipboard remains available when browser permission is denied.
+    }
+  };
+
+  const pasteSelection = async (pastedText?: string) => {
+    let clipboard: SpreadsheetClipboard | null = null;
+    if (pastedText !== undefined) {
+      const external = spreadsheetClipboardFromText(pastedText);
+      clipboard = copiedCells?.text === external.text ? copiedCells : external;
+    } else {
+      clipboard = copiedCells;
+    }
+    if (clipboard === null) return;
+    const inputs = cellInputsForPaste(
+      clipboard,
+      spreadsheet.selection.anchor,
+    );
+    await commit(inputs, spreadsheet.selection.anchor);
   };
 
   const workbookName = spreadsheet.workbook?.name ?? "Formula laboratory";
@@ -70,10 +91,10 @@ export default function App({ client }: AppProps) {
           workbookName={workbookName}
         />
         <WorkbookToolbar
-          canPaste={copiedCell !== null}
+          canPaste={copiedCells !== null}
           isCalculating={spreadsheet.isCalculating}
-          onCopy={copySelectedCell}
-          onPaste={() => void pasteCopiedCell()}
+          onCopy={() => void copySelection()}
+          onPaste={() => void pasteSelection()}
           onRecalculate={() => void spreadsheet.recalculate()}
         />
         <FormulaBar
@@ -81,7 +102,12 @@ export default function App({ client }: AppProps) {
           input={spreadsheet.selectedCell?.input ?? ""}
           isEditing={formulaEditing}
           onCancel={() => setFormulaEditing(false)}
-          onCommit={(input) => void commit(spreadsheet.selectedAddress, input)}
+          onCommit={(input) =>
+            void commit(
+              [{ address: spreadsheet.selectedAddress, input }],
+              spreadsheet.selectedAddress,
+            )
+          }
           onStartEditing={() => setFormulaEditing(true)}
         />
         <main className={`workbook-main ${inspectorOpen ? "workbook-main--with-inspector" : ""}`}>
@@ -101,11 +127,11 @@ export default function App({ client }: AppProps) {
             <SpreadsheetGrid
               columnCount={DEFAULT_COLUMN_COUNT}
               onCommit={commit}
-              onCopy={copySelectedCell}
-              onPaste={() => void pasteCopiedCell()}
+              onCopy={() => void copySelection()}
+              onPaste={(text) => void pasteSelection(text)}
               onSelect={select}
               rowCount={DEFAULT_ROW_COUNT}
-              selectedAddress={spreadsheet.selectedAddress}
+              selection={spreadsheet.selection}
               workbook={spreadsheet.workbook}
               zoom={zoom}
             />
@@ -121,7 +147,7 @@ export default function App({ client }: AppProps) {
         <SheetStatusBar
           onZoomChange={setZoom}
           revision={revision}
-          selectedAddress={spreadsheet.selectedAddress}
+          selectedAddress={selectionLabel(spreadsheet.selection)}
           selectedCell={spreadsheet.selectedCell}
           zoom={zoom}
         />
