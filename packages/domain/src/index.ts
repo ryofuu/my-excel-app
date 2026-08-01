@@ -1,4 +1,4 @@
-export { brand, type Brand } from "./value-objects/brand";
+export { brand, type Brand } from "./value-objects/brand.type";
 
 export {
   MAX_COLUMN_NUMBER,
@@ -17,7 +17,7 @@ export {
   type WorkbookName,
   type WorksheetId,
   type WorksheetName,
-} from "./value-objects/identifiers";
+} from "./value-objects/identifiers.vo";
 
 export {
   cellAddress,
@@ -32,7 +32,7 @@ export {
   type CellAddress,
   type CellId,
   type CellIdParts,
-} from "./value-objects/cell-address";
+} from "./value-objects/cell-address.vo";
 
 export {
   booleanLiteral,
@@ -46,7 +46,7 @@ export {
   type CellContent,
   type FormulaSource,
   type Literal,
-} from "./value-objects/cell-content";
+} from "./value-objects/cell-content.vo";
 
 export {
   BLANK,
@@ -58,7 +58,7 @@ export {
   type CellError,
   type CellErrorCode,
   type CellValue,
-} from "./value-objects/cell-value";
+} from "./value-objects/cell-value.vo";
 
 export {
   Cell,
@@ -76,7 +76,7 @@ export {
   type CellChange,
   type EditConflict,
   type WorkbookChangeSet,
-} from "./value-objects/workbook-change-set";
+} from "./value-objects/workbook-change-set.vo";
 
 export {
   formatCellReference,
@@ -85,21 +85,21 @@ export {
   type Expression,
   type RangeReference,
   type UnaryOperator,
-} from "./value-objects/formula/ast";
+} from "./value-objects/formula/formula.ast";
 
-export { tokenizeFormula, type FormulaToken } from "./value-objects/formula/token";
+export { tokenizeFormula, type FormulaToken } from "./value-objects/formula/formula.tokenizer";
 
 export {
   parseFormula,
   referencesInExpression,
   type FormulaParseError,
   type FormulaParseResult,
-} from "./value-objects/formula/parse";
+} from "./value-objects/formula/formula.parser";
 
 export {
   translateFormula,
   type FormulaTranslation,
-} from "./value-objects/formula/translate";
+} from "./value-objects/formula/formula.translator";
 
 export {
   type CellDependency,
@@ -109,22 +109,22 @@ export {
   type FormulaAnalysis,
   type RangeDependency,
   type RangeDependent,
-} from "./derived/calculation/dependency-graph";
+} from "./derived/calculation/dependency-graph.derived";
 
 export {
   type CalculationTrace,
-} from "./derived/calculation/calculation-trace";
+} from "./derived/calculation/calculation-trace.derived";
 
 export {
   valueInSnapshot,
   type CalculationSnapshot,
   type PreviousCalculation,
-} from "./derived/calculation/calculation-snapshot";
+} from "./derived/calculation/calculation-snapshot.derived";
 
 export {
   compileRevision,
   dependenciesInExpression,
   dependentsOf,
-} from "./services/calculation/compile-revision";
+} from "./services/calculation/compile-revision.service";
 
-export { recalculate } from "./services/calculation/recalculate";
+export { recalculate } from "./services/calculation/recalculate.service";

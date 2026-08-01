@@ -1,7 +1,7 @@
-export { Cell, type CellProperties } from "./cell";
-export { Workbook, type WorkbookProperties } from "./workbook";
+export { Cell, type CellProperties } from "./cell.entity";
+export { Workbook, type WorkbookProperties } from "./workbook.entity";
 export {
   WorkbookRevision,
   type WorkbookRevisionProperties,
-} from "./workbook-revision";
-export { Worksheet, type WorksheetProperties } from "./worksheet";
+} from "./workbook-revision.entity";
+export { Worksheet, type WorksheetProperties } from "./worksheet.entity";

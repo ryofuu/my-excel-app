@@ -1,15 +1,15 @@
-export { createInMemoryRepositories } from "./repositories/in-memory-repositories";
-export { createBrowserRepositories } from "./sqlite/browser-repositories";
-export { createSqliteWorkbookRepositories } from "./sqlite/sqlite-workbook-repositories";
+export { createInMemoryRepositories } from "./repositories/in-memory-repositories.adapter";
+export { createBrowserRepositories } from "./sqlite/browser-repositories.factory";
+export { createSqliteWorkbookRepositories } from "./sqlite/sqlite-workbook-repositories.adapter";
 export {
   createRepositoryWorkerClient,
   createSqliteWorkerClient,
-} from "./sqlite/worker/worker-client";
+} from "./sqlite/worker/repository-worker.client";
 export type {
   BrowserRepositoriesOptions,
-} from "./sqlite/browser-repositories";
-export type { SqliteWorkbookRepositories } from "./sqlite/sqlite-workbook-repositories";
+} from "./sqlite/browser-repositories.factory";
+export type { SqliteWorkbookRepositories } from "./sqlite/sqlite-workbook-repositories.adapter";
 export type {
   RepositoryWorker,
   RepositoryWorkerClient,
-} from "./sqlite/worker/worker-client";
+} from "./sqlite/worker/repository-worker.client";
