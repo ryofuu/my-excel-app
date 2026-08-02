@@ -56,8 +56,8 @@ const numberChange = (
     ],
   });
 
-describe("in-memory workbook repositories", () => {
-  it("creates a Worksheet from the next complete Worksheet snapshot", async () => {
+describe("インメモリWorkbook Repository", () => {
+  it("変更後の完全なWorksheet SnapshotからWorksheetを作成する", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();
     await repositories.workbooks.create(initial);
@@ -85,7 +85,7 @@ describe("in-memory workbook repositories", () => {
     }
   });
 
-  it("deletes a Worksheet and its Cells in one revision", async () => {
+  it("1つのRevisionでWorksheetとそのCellを削除する", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();
     await repositories.workbooks.create(initial);
@@ -123,7 +123,7 @@ describe("in-memory workbook repositories", () => {
     }
   });
 
-  it("returns an EditConflict when a stale Cell edit targets a deleted Worksheet", async () => {
+  it("削除済みWorksheetのCellを古いRevisionから編集するとEditConflictを返す", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();
     await repositories.workbooks.create(initial);
@@ -159,7 +159,7 @@ describe("in-memory workbook repositories", () => {
     });
   });
 
-  it("accepts disjoint stale edits while creating a sequential revision", async () => {
+  it("対象Cellが重ならない古い編集を受け入れて連続するRevisionを作る", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();
     await repositories.workbooks.create(initial);
@@ -183,7 +183,7 @@ describe("in-memory workbook repositories", () => {
     ]);
   });
 
-  it("rejects a stale edit to the same cell", async () => {
+  it("同じCellに対する古い編集を拒否する", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();
     await repositories.workbooks.create(initial);
@@ -201,7 +201,7 @@ describe("in-memory workbook repositories", () => {
     });
   });
 
-  it("retains a delete tombstone for subsequent stale conflict detection", async () => {
+  it("後続の競合検出に使うため削除のtombstoneを保持する", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();
     const target = cellId(initial.worksheet.id, cellAddress(3, 3));
@@ -231,7 +231,7 @@ describe("in-memory workbook repositories", () => {
     });
   });
 
-  it("keeps only the current revision as the durable-state model specifies", async () => {
+  it("永続状態モデルの定義どおり現在のRevisionだけを保持する", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();
     await repositories.workbooks.create(initial);

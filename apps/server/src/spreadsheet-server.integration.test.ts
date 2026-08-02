@@ -65,8 +65,8 @@ afterEach(async () => {
   );
 });
 
-describe("server-side SQLite Repository integration", () => {
-  it("persists a created Worksheet through the HTTP Repository", async () => {
+describe("サーバー側SQLite Repositoryの統合", () => {
+  it("HTTP Repository経由で作成したWorksheetを永続化する", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, "gridline.sqlite3");
@@ -100,7 +100,7 @@ describe("server-side SQLite Repository integration", () => {
     await server.close();
   });
 
-  it("deletes a Worksheet and its Cells through the HTTP Repository", async () => {
+  it("HTTP Repository経由でWorksheetとそのCellを削除する", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, "gridline.sqlite3");
@@ -149,7 +149,7 @@ describe("server-side SQLite Repository integration", () => {
     await secondServer.close();
   });
 
-  it("finds a Workbook after the HTTP server reopens the same SQLite file", async () => {
+  it("HTTPサーバーが同じSQLiteファイルを開き直した後もWorkbookを取得できる", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const databasePath = join(directory, "gridline.sqlite3");
@@ -176,7 +176,7 @@ describe("server-side SQLite Repository integration", () => {
     await secondServer.close();
   });
 
-  it("returns an EditConflict for a stale change to the same Cell", async () => {
+  it("同じCellへの古い変更にはEditConflictを返す", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const server = createSpreadsheetHttpServer({
@@ -218,7 +218,7 @@ describe("server-side SQLite Repository integration", () => {
     await server.close();
   });
 
-  it("accepts stale changes when they target different Cells", async () => {
+  it("対象が異なるCellなら古いRevisionを基にした変更を受け入れる", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const server = createSpreadsheetHttpServer({
@@ -268,7 +268,7 @@ describe("server-side SQLite Repository integration", () => {
     await server.close();
   });
 
-  it("retains a deleted Cell tombstone for stale edit detection", async () => {
+  it("古い編集との競合検出に使うため削除したCellのtombstoneを保持する", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const server = createSpreadsheetHttpServer({
@@ -310,7 +310,7 @@ describe("server-side SQLite Repository integration", () => {
     await server.close();
   });
 
-  it("rejects a stale Cell change after its Worksheet was deleted", async () => {
+  it("Worksheetの削除後はそのCellに対する古い変更を拒否する", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const server = createSpreadsheetHttpServer({
@@ -364,7 +364,7 @@ describe("server-side SQLite Repository integration", () => {
     await server.close();
   });
 
-  it("rejects a structural Worksheet change from a stale revision", async () => {
+  it("古いRevisionを基にしたWorksheet構造の変更を拒否する", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
     const server = createSpreadsheetHttpServer({
