@@ -22,8 +22,8 @@ import {
   toWorkbookRevisionDto,
 } from "./sqlite-workbook.codec";
 
-describe("SQLite Entity codec", () => {
-  it("keeps Entity state on the plain HTTP and SQLite DTO boundary", () => {
+describe("SQLite Entityの変換", () => {
+  it("plainなHTTP・SQLite DTOとの境界でEntityの状態を維持する", () => {
     const workbookIdValue = workbookId("book-1");
     const worksheetIdValue = worksheetId("sheet-1");
     const formulaCell = cellId(worksheetIdValue, cellAddress(2, 3));
@@ -79,7 +79,7 @@ describe("SQLite Entity codec", () => {
     });
   });
 
-  it("creates a tombstone-capable ChangeSet DTO without giving the caller a target revision", () => {
+  it("呼び出し元に変更先Revisionを指定させずtombstone対応のChangeSet DTOを作る", () => {
     const workbookIdValue = workbookId("book-1");
     const worksheetIdValue = worksheetId("sheet-1");
     const target = cellId(worksheetIdValue, cellAddress(7, 5));

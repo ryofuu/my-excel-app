@@ -47,8 +47,8 @@ const workbook = (): WorkbookView => ({
   evaluationOrder: [],
 });
 
-describe("spreadsheet clipboard", () => {
-  it("copies a rectangular TSV range and maps it from a paste origin", () => {
+describe("Spreadsheetのクリップボード", () => {
+  it("長方形の範囲をTSVとしてコピーし貼り付け開始位置からCellへ割り当てる", () => {
     const clipboard = spreadsheetClipboard(workbook(), {
       anchor: "A1",
       focus: "B2",
@@ -63,7 +63,7 @@ describe("spreadsheet clipboard", () => {
     ]);
   });
 
-  it("parses external clipboard text without inventing source addresses", () => {
+  it("外部のクリップボード文字列を存在しないコピー元アドレスなしで解析する", () => {
     const clipboard = spreadsheetClipboardFromText("1\t2\r\n3\t=A1\r\n");
 
     expect(cellInputsForPaste(clipboard, "D5")).toEqual([

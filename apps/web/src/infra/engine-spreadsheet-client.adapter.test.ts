@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { createEngineSpreadsheetClient } from "./engine-spreadsheet-client.adapter";
 
-describe("engine SpreadsheetClient integration", () => {
-  it("creates and opens a blank Worksheet", async () => {
+describe("engine SpreadsheetClientの統合", () => {
+  it("空のWorksheetを作成して開く", async () => {
     const repositories = createInMemoryRepositories();
     const client = createEngineSpreadsheetClient(async () => repositories);
     const opened = await client.open();
@@ -24,7 +24,7 @@ describe("engine SpreadsheetClient integration", () => {
     client.dispose();
   });
 
-  it("deletes the active Worksheet with its Cells but retains the final Worksheet", async () => {
+  it("最後のWorksheetは残しつつ選択中のWorksheetとそのCellを削除する", async () => {
     const repositories = createInMemoryRepositories();
     const client = createEngineSpreadsheetClient(async () => repositories);
     const opened = await client.open();
@@ -46,7 +46,7 @@ describe("engine SpreadsheetClient integration", () => {
     client.dispose();
   });
 
-  it("opens, edits, recalculates, and inspects through one repository path", async () => {
+  it("1つのRepository経路で開く・編集・Recalculation・検査を行う", async () => {
     const repositories = createInMemoryRepositories();
     const client = createEngineSpreadsheetClient(async () => repositories);
 
@@ -82,7 +82,7 @@ describe("engine SpreadsheetClient integration", () => {
     await expect(client.recalculate()).rejects.toThrow("disposed");
   });
 
-  it("opens the matching current WorkbookRevision from persisted state", async () => {
+  it("永続状態に対応する現在のWorkbookRevisionを開く", async () => {
     const repositories = createInMemoryRepositories();
     const first = createEngineSpreadsheetClient(async () => repositories);
     await first.open();
@@ -98,7 +98,7 @@ describe("engine SpreadsheetClient integration", () => {
     second.dispose();
   });
 
-  it("creates multiple copied Cells in one WorkbookRevision", async () => {
+  it("コピーした複数のCellを1つのWorkbookRevisionで作成する", async () => {
     const repositories = createInMemoryRepositories();
     const client = createEngineSpreadsheetClient(async () => repositories);
     await client.open();
@@ -114,7 +114,7 @@ describe("engine SpreadsheetClient integration", () => {
     client.dispose();
   });
 
-  it("converges when two clients create the fixed Workbook concurrently", async () => {
+  it("2つのclientが固定Workbookを同時作成しても同じ状態に収束する", async () => {
     const repositories = createInMemoryRepositories();
     const first = createEngineSpreadsheetClient(async () => repositories);
     const second = createEngineSpreadsheetClient(async () => repositories);
@@ -132,7 +132,7 @@ describe("engine SpreadsheetClient integration", () => {
     second.dispose();
   });
 
-  it("surfaces a SQLite server error instead of creating transient state", async () => {
+  it("一時状態を作らずSQLiteサーバーのErrorを呼び出し元へ返す", async () => {
     const client = createEngineSpreadsheetClient(async () => {
       throw new Error("SQLite server unavailable");
     });
@@ -141,7 +141,7 @@ describe("engine SpreadsheetClient integration", () => {
     client.dispose();
   });
 
-  it("does not activate after disposal interrupts an asynchronous open", async () => {
+  it("非同期のopenをdisposeで中断した後はactiveにしない", async () => {
     const repositories = createInMemoryRepositories();
     let release!: (value: typeof repositories) => void;
     const client = createEngineSpreadsheetClient(

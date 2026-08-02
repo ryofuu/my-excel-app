@@ -7,8 +7,8 @@ import {
   type SpreadsheetSelection,
 } from "./spreadsheet-selection.utility";
 
-describe("spreadsheet selection", () => {
-  it("normalizes a reverse drag into one rectangular range", () => {
+describe("Spreadsheetの選択範囲", () => {
+  it("逆方向のドラッグを1つの長方形範囲に正規化する", () => {
     const selection: SpreadsheetSelection = {
       anchor: "C3",
       focus: "A2",
