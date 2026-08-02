@@ -26,7 +26,7 @@ describe("Formula Compilerの統合", () => {
     ).toEqual(["A1", "$B2", "C3"]);
     expect(analysis.parse).toMatchObject({
       kind: "success",
-      expression: { kind: "binary" },
+      ast: { kind: "binary" },
     });
     expect(analysis.dependencies).toHaveLength(2);
   });

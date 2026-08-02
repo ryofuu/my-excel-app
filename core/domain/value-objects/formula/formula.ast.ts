@@ -32,6 +32,9 @@ export type Expression =
     }>
   | Readonly<{ kind: "call"; name: string; arguments: readonly Expression[] }>;
 
+/** Parser が Formula 全体から構築した抽象構文木。 */
+export type FormulaAST = Expression;
+
 export const formatCellReference = (reference: CellReference): string => {
   const columnPrefix = reference.columnAbsolute ? "$" : "";
   const rowPrefix = reference.rowAbsolute ? "$" : "";

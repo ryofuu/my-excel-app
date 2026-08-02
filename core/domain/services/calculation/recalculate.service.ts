@@ -535,7 +535,7 @@ export const recalculate = (
       values.set(formulaId, errorValue("parse", formulaId, formula.parse.error.message));
     } else {
       const worksheetId = cellIdParts(formulaId).worksheetId;
-      const evaluated = evaluateExpression(formula.parse.expression, worksheetId, formulaId, values);
+      const evaluated = evaluateExpression(formula.parse.ast, worksheetId, formulaId, values);
       if (evaluated.kind === "range-value") {
         values.set(formulaId, errorValue("type", formulaId, "A range cannot be used as a cell value."));
       } else {

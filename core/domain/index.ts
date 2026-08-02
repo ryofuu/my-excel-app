@@ -82,6 +82,7 @@ export {
   type BinaryOperator,
   type CellReference,
   type Expression,
+  type FormulaAST,
   type RangeReference,
   type UnaryOperator,
 } from "./value-objects/formula/formula.ast";

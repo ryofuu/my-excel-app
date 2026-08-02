@@ -92,7 +92,7 @@ const uniqueDependencies = (
   });
 };
 
-/** FormulaSourceからToken・AST・依存関係を順に導出する組み合わせ境界。 */
+/** FormulaSourceからToken・FormulaAST・依存関係を順に導出する組み合わせ境界。 */
 export const compileFormula = (
   id: CellId,
   source: FormulaSource,
@@ -104,7 +104,7 @@ export const compileFormula = (
       ? uniqueDependencies(
           dependenciesInExpression(
             cellIdParts(id).worksheetId,
-            parse.expression,
+            parse.ast,
           ),
         )
       : [];

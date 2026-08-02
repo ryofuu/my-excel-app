@@ -12,7 +12,7 @@ describe("Formulaの構文解析", () => {
   it("乗除算・加減算・文字列結合・比較の順に演算子の優先順位を適用する", () => {
     expect(parseSource('=1+2*3&"!"=7')).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "=",
         left: {
@@ -54,7 +54,7 @@ describe("Formulaの構文解析", () => {
   it("括弧内の式を単項演算子のoperandとして解析する", () => {
     expect(parseSource("=-(1+2)")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "unary",
         operator: "-",
         operand: {
@@ -76,7 +76,7 @@ describe("Formulaの構文解析", () => {
   it("同じ優先順位の加減算を左結合で解析する", () => {
     expect(parseSource("=10-3+2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "+",
         left: {
@@ -102,7 +102,7 @@ describe("Formulaの構文解析", () => {
   it("同じ優先順位の乗除算を左結合で解析する", () => {
     expect(parseSource("=20/5*2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "*",
         left: {
@@ -128,7 +128,7 @@ describe("Formulaの構文解析", () => {
   it("Text同士のConcatenation演算子を解析する", () => {
     expect(parseSource('="A"&"B"')).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "&",
         left: {
@@ -146,7 +146,7 @@ describe("Formulaの構文解析", () => {
   it("連続する単項演算子を右側から入れ子にして解析する", () => {
     expect(parseSource("=+-1")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "unary",
         operator: "+",
         operand: {
@@ -164,7 +164,7 @@ describe("Formulaの構文解析", () => {
   it("Equal比較演算子を解析する", () => {
     expect(parseSource("=1=2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "=",
         left: {
@@ -182,7 +182,7 @@ describe("Formulaの構文解析", () => {
   it("NotEqual比較演算子を解析する", () => {
     expect(parseSource("=1<>2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "<>",
         left: {
@@ -200,7 +200,7 @@ describe("Formulaの構文解析", () => {
   it("LessThan比較演算子を解析する", () => {
     expect(parseSource("=1<2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "<",
         left: {
@@ -218,7 +218,7 @@ describe("Formulaの構文解析", () => {
   it("LessThanOrEqual比較演算子を解析する", () => {
     expect(parseSource("=1<=2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "<=",
         left: {
@@ -236,7 +236,7 @@ describe("Formulaの構文解析", () => {
   it("GreaterThan比較演算子を解析する", () => {
     expect(parseSource("=1>2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: ">",
         left: {
@@ -254,7 +254,7 @@ describe("Formulaの構文解析", () => {
   it("GreaterThanOrEqual比較演算子を解析する", () => {
     expect(parseSource("=1>=2")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: ">=",
         left: {
@@ -272,7 +272,7 @@ describe("Formulaの構文解析", () => {
   it("関数呼び出しの引数としてRangeとCellReferenceを解析する", () => {
     expect(parseSource("=SUM(A1:B2,C3)")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "call",
         name: "SUM",
         arguments: [
@@ -307,7 +307,7 @@ describe("Formulaの構文解析", () => {
   it("CellReferenceの行列ごとの相対参照と絶対参照を保持する", () => {
     expect(parseSource("=$A1+A$2+$B$3")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "binary",
         operator: "+",
         left: {
@@ -345,7 +345,7 @@ describe("Formulaの構文解析", () => {
   it("引数のない関数呼び出しを解析する", () => {
     expect(parseSource("=SUM()")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "call",
         name: "SUM",
         arguments: [],
@@ -356,7 +356,7 @@ describe("Formulaの構文解析", () => {
   it("関数引数の中でも比較を含む完全な式を解析する", () => {
     expect(parseSource("=SUM(1=1,2)")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "call",
         name: "SUM",
         arguments: [
@@ -384,7 +384,7 @@ describe("Formulaの構文解析", () => {
   it("Number Literalを解析する", () => {
     expect(parseSource("=42")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "literal",
         literal: { kind: "number", value: 42 },
       },
@@ -394,7 +394,7 @@ describe("Formulaの構文解析", () => {
   it("Text Literalを解析する", () => {
     expect(parseSource('="集計"')).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "literal",
         literal: { kind: "text", value: "集計" },
       },
@@ -404,7 +404,7 @@ describe("Formulaの構文解析", () => {
   it("Boolean Literalを解析する", () => {
     expect(parseSource("=TRUE")).toEqual({
       kind: "success",
-      expression: {
+      ast: {
         kind: "literal",
         literal: { kind: "boolean", value: true },
       },
