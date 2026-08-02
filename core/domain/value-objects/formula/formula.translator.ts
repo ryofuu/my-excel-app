@@ -1,7 +1,7 @@
 import { cellAddress, type CellAddress } from "../cell-address.vo";
 import { formulaSource, type FormulaSource } from "../cell-content.vo";
 import { formatCellReference } from "./formula.ast";
-import { tokenizeFormula } from "./formula.tokenizer";
+import type { FormulaToken } from "./formula.tokenizer";
 
 export type FormulaTranslation =
   | Readonly<{ kind: "success"; source: FormulaSource }>
@@ -13,6 +13,7 @@ export type FormulaTranslation =
  */
 export const translateFormula = (
   source: FormulaSource,
+  tokens: readonly FormulaToken[],
   fromAddress: CellAddress,
   toAddress: CellAddress,
 ): FormulaTranslation => {
@@ -27,7 +28,6 @@ export const translateFormula = (
 
   // Token の位置情報を使い、CellReference 部分だけを置換する。
   // 関数名・演算子・空白・Text など、それ以外の Source 表現は元のまま残す。
-  const tokens = tokenizeFormula(source);
   const references = tokens.filter((token) => token.kind === "reference");
   let translated = "";
   let position = 0;

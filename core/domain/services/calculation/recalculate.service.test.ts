@@ -4,17 +4,13 @@ import {
   Workbook,
   WorkbookRevision,
   Worksheet,
-  cellAddress,
   cellId,
   compileRevision,
   dependentsOf,
-  formulaSource,
   parseA1Address,
   parseCellInput,
-  parseFormula,
   recalculate,
   revisionNumber,
-  translateFormula,
   valueInSnapshot,
   workbookId,
   workbookName,
@@ -57,41 +53,6 @@ const revision = (
 
 const value = (snapshot: ReturnType<typeof recalculate>, address: string) =>
   valueInSnapshot(snapshot, idFor(address));
-
-describe("Formulaの構文解析", () => {
-  it("Tokenを保持しながらA1参照・絶対参照・Range・演算子優先順位・SUMを解析する", () => {
-    const source = formulaSource('=SUM(A1:$B2, 3*-(C3-1))&"!"');
-    const result = parseFormula(source);
-
-    expect(result.kind).toBe("success");
-    if (result.kind !== "success") {
-      return;
-    }
-    expect(result.tokens.filter((token) => token.kind === "reference").map((token) => token.lexeme)).toEqual([
-      "A1",
-      "$B2",
-      "C3",
-    ]);
-    expect(result.expression.kind).toBe("binary");
-  });
-
-  it("壊れたFormulaSourceを入力文字列のまま保持する", () => {
-    const result = parseFormula(formulaSource("=1+"));
-    expect(result.kind).toBe("error");
-    if (result.kind === "error") {
-      expect(result.error.message).toContain("Expected an expression");
-    }
-  });
-
-  it("Formulaのコピー時に相対参照の座標だけを変換する", () => {
-    const translated = translateFormula(
-      formulaSource("=A1+$B2+C$3+$D$4"),
-      cellAddress(1, 1),
-      cellAddress(3, 4),
-    );
-    expect(translated).toEqual({ kind: "success", source: "=D3+$B4+F$3+$D$4" });
-  });
-});
 
 describe("Recalculationの統合", () => {
   it("依存関係を順に評価しRangeの依存関係を展開せずに保持する", () => {

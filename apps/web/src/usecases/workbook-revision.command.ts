@@ -1,6 +1,7 @@
 import {
   cellId,
   formulaContent,
+  tokenizeFormula,
   translateFormula,
   type CellChange,
   type Workbook,
@@ -38,6 +39,7 @@ export const cellChangesFromCommand = (
     // 絶対参照を維持する責務も Formula Translator に閉じ込める。
     const translation = translateFormula(
       sourceContent.source,
+      tokenizeFormula(sourceContent.source),
       copy.source,
       copy.target,
     );
