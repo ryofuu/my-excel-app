@@ -1,15 +1,20 @@
 export { createInMemoryRepositories } from "./repositories/in-memory-repositories.adapter";
-export { createBrowserRepositories } from "./sqlite/browser-repositories.factory";
-export { createSqliteWorkbookRepositories } from "./sqlite/sqlite-workbook-repositories.adapter";
+export { createHttpSpreadsheetRepositories } from "./http/http-spreadsheet-repositories.adapter";
+export type { HttpSpreadsheetRepositoriesOptions } from "./http/http-spreadsheet-repositories.adapter";
 export {
-  createRepositoryWorkerClient,
-  createSqliteWorkerClient,
-} from "./sqlite/worker/repository-worker.client";
+  createWorkbookInDatabase,
+  createWorkbookRevisionInDatabase,
+  deleteWorkbookInDatabase,
+  findWorkbookInDatabase,
+  initializeDatabase,
+} from "./sqlite/sqlite-workbook.repository";
 export type {
-  BrowserRepositoriesOptions,
-} from "./sqlite/browser-repositories.factory";
-export type { SqliteWorkbookRepositories } from "./sqlite/sqlite-workbook-repositories.adapter";
+  SqlDatabase,
+  SqlRow,
+} from "./sqlite/sqlite.database";
 export type {
-  RepositoryWorker,
-  RepositoryWorkerClient,
-} from "./sqlite/worker/repository-worker.client";
+  WorkbookChangeSetDto,
+  WorkbookRevisionCreateDtoResult,
+  WorkbookSeedDto,
+  WorkbookStateDto,
+} from "./sqlite/sqlite-workbook.dto";

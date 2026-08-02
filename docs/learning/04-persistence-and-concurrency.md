@@ -35,10 +35,11 @@ flowchart LR
   UI["React UI"] --> Client["SpreadsheetClient Adapter"]
   Client --> UseCase["createWorkbookRevision"]
   UseCase --> Port["WorkbookRevisionRepository"]
-  Port --> SQLite["SQLite Adapter"]
+  Port --> HTTP["HTTP Repository Adapter"]
   Port --> Memory["In-memory Adapter"]
-  SQLite --> Worker["Dedicated Worker"]
-  Worker --> OPFS["OPFS / memory"]
+  HTTP --> Server["Node HTTP Server"]
+  Server --> SQLite["Node SQLite Adapter"]
+  SQLite --> File["data/gridline.sqlite3"]
 ```
 
 Repositoryを交換しても、次の意味は同じです。
@@ -141,17 +142,28 @@ CellContentの削除は`content_json = NULL`として保存します。画面や
 
 これがtombstoneです。tombstoneがなければ、Revision 2で削除されたA1に対して、Revision 1を基にした古い編集が「A1は存在しないから未変更」と誤判定されてしまいます。
 
-## Dedicated WorkerとOPFS
+## Node serverと通常のSQLiteファイル
 
-[browser-repositories.factory.ts](../../packages/spreadsheet/src/infra/sqlite/browser-repositories.factory.ts)はSQLite RepositoryをDedicated Worker上に作ります。Worker境界ではEntity instanceを直接送らず、structured clone可能なDTOを[repository-worker.protocol.ts](../../packages/spreadsheet/src/infra/sqlite/worker/repository-worker.protocol.ts)で交換します。
+ブラウザはSQLiteへ直接アクセスしません。[http-spreadsheet-repositories.adapter.ts](../../packages/spreadsheet/src/infra/http/http-spreadsheet-repositories.adapter.ts)が、Repository interfaceを4つのHTTP resourceへ変換します。
 
-保存先は利用可能な機能に応じて選ばれます。
+```text
+POST   /api/workbooks
+GET    /api/workbooks/:workbookId
+DELETE /api/workbooks/:workbookId
+POST   /api/workbook-revisions
+```
 
-1. OPFS SAH pool
-2. 通常のOPFS
-3. SQLiteのmemory database
+[spreadsheet-http-server.factory.ts](../../apps/server/src/presentation/http/spreadsheet-http-server.factory.ts)はDTOを受け取り、[node-sqlite.database.ts](../../apps/server/src/infra/sqlite/node-sqlite.database.ts)を通してNode 24組み込みSQLiteを使います。DBはリポジトリ直下の`data/gridline.sqlite3`です。
 
-WorkerやSQLiteを開始できない場合、Web側の[engine-spreadsheet-client.adapter.ts](../../apps/web/src/infra/engine-spreadsheet-client.adapter.ts)はin-memory Repositoryへfallbackします。
+```bash
+sqlite3 data/gridline.sqlite3
+.schema
+SELECT * FROM workbooks;
+SELECT * FROM worksheets;
+SELECT * FROM cell_states;
+```
+
+通常ファイルなので、ブラウザ固有のOPFSやVFSを理解しなくても、保存された正本と`modified_revision`を直接観察できます。serverへ接続できない場合はmemoryへfallbackせず、UIへ接続Errorを返します。永続化されたように見える一時状態を作らないためです。
 
 ## 再計算との接続
 
@@ -160,7 +172,8 @@ WorkerやSQLiteを開始できない場合、Web側の[engine-spreadsheet-client
 ```text
 Cell入力
   → WorkbookChangeSetを作成
-  → Repository transaction
+  → HTTP Repository
+  → server上のSQLite transaction
   → 新しいWorkbookRevisionを取得
   → 前Revisionと前Snapshotを渡してrecalculate
   → 新しいCalculationSnapshotをUIへ投影
@@ -175,3 +188,4 @@ Cell入力
 3. 競合はWorkbook全体ではなく、変更対象Cellの最終変更版で判定する。
 4. 削除後の競合検出にはtombstoneが必要である。
 5. 保存するのは正本だけで、計算結果は再生成する。
+6. DBファイルはserverが所有し、WebはRepository契約だけを見る。

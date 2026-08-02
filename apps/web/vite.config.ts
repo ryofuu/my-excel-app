@@ -10,22 +10,11 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "./src")
     }
   },
-  optimizeDeps: {
-    exclude: ["@sqlite.org/sqlite-wasm"]
-  },
   server: {
-    headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp"
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8787"
+      }
     }
-  },
-  preview: {
-    headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp"
-    }
-  },
-  worker: {
-    format: "es"
   }
 });

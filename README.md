@@ -13,7 +13,15 @@ pnpm install
 pnpm dev
 ```
 
-表示されたローカル URL を開きます。SQLite WASM は Dedicated Worker 内で動作し、利用可能なら OPFS SAH pool、通常 OPFS、メモリの順に保存先を選びます。
+表示されたWebのローカルURLを開きます。`pnpm dev`はWebとNode serverを同時に起動し、入力状態を通常のSQLiteファイル`data/gridline.sqlite3`へ保存します。
+
+DBの中身はSQLite CLIで直接確認できます。
+
+```bash
+sqlite3 data/gridline.sqlite3
+.tables
+SELECT * FROM cell_states;
+```
 
 ## 確認コマンド
 
@@ -27,19 +35,21 @@ pnpm build
 
 | パッケージ | 責務 |
 | --- | --- |
-| `packages/spreadsheet` | Domain、CRUD use case、repository port、SQLite adapterを含むスプレッドシート本体 |
-| `apps/web` | `presentation` の UI と `infra` の composition root |
+| `packages/spreadsheet` | Domain、CRUD use case、repository port、HTTP/SQLite境界を含むスプレッドシート本体 |
+| `apps/server` | HTTP resourceとNode SQLite adapter。`data/gridline.sqlite3`を所有 |
+| `apps/web` | UI、計算runtime、HTTP Repository clientをcomposition |
 
 `packages/spreadsheet` の内部では `domain ← usecases ← infra` の依存方向を保ち、`apps/web` がそれらをcompositionします。主な配置は次のとおりです。
 
 ```text
 packages/spreadsheet/src/domain/{entities,value-objects,derived/calculation,services/calculation}
 packages/spreadsheet/src/usecases/{workbooks,workbook-revisions,ports}
-packages/spreadsheet/src/infra/{repositories,sqlite/worker}
+packages/spreadsheet/src/infra/{http,repositories,sqlite}
+apps/server/src/{presentation/http,infra/sqlite}
 apps/web/src/{presentation,infra}
 ```
 
-各ファイルは原則として `<concept>.<role>.ts(x)` で命名します。たとえば `workbook.entity.ts`、`cell-address.vo.ts`、`recalculate.service.ts`、`create-workbook.usecase.ts`、`sqlite-workbook-repositories.adapter.ts` です。`index.ts`、`main.tsx`、テスト、スタイルシートは慣例名を使います。
+各ファイルは原則として `<concept>.<role>.ts(x)` で命名します。たとえば `workbook.entity.ts`、`cell-address.vo.ts`、`recalculate.service.ts`、`create-workbook.usecase.ts`、`http-spreadsheet-repositories.adapter.ts` です。`index.ts`、`main.tsx`、テスト、スタイルシートは慣例名を使います。
 
 ## 初期版の数式範囲
 

@@ -1,4 +1,4 @@
-/** Plain, structured-clone-safe representations used at the Worker boundary. */
+/** Plain representations shared by the HTTP and SQLite boundaries. */
 export type LiteralDto =
   | Readonly<{ kind: "number"; value: number }>
   | Readonly<{ kind: "text"; value: string }>

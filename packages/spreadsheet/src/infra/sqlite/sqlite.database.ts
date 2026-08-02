@@ -1,4 +1,4 @@
-/** The small OO1 subset used by the repository and easy to fake in tests. */
+/** The minimal synchronous SQLite protocol needed by the Repository. */
 export type SqlRow = Record<string, unknown>;
 
 export type SqlDatabase = Readonly<{
@@ -8,7 +8,6 @@ export type SqlDatabase = Readonly<{
     rowMode?: "object";
     resultRows?: SqlRow[];
   }>) => unknown;
-  close?: () => unknown;
 }>;
 
 export const execute = (
@@ -29,7 +28,7 @@ export const query = (
   return resultRows;
 };
 
-/** SQLite transactions must stay inside one Worker message. */
+/** One Repository request owns the complete SQLite transaction. */
 export const transaction = <Result>(
   database: SqlDatabase,
   action: () => Result,

@@ -6,10 +6,8 @@
   "exports": {
     "./domain": "./src/domain/index.ts",
     "./usecases": "./src/usecases/index.ts",
-    "./infra": "./src/infra/index.ts"
-  },
-  "dependencies": {
-    "@sqlite.org/sqlite-wasm": "latest"
+    "./infra": "./src/infra/index.ts",
+    "./infra/server": "./src/infra/server.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

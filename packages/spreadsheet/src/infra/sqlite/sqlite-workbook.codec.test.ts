@@ -23,7 +23,7 @@ import {
 } from "./sqlite-workbook.codec";
 
 describe("SQLite Entity codec", () => {
-  it("keeps entity state on the plain Worker DTO boundary", () => {
+  it("keeps Entity state on the plain HTTP and SQLite DTO boundary", () => {
     const workbookIdValue = workbookId("book-1");
     const worksheetIdValue = worksheetId("sheet-1");
     const formulaCell = cellId(worksheetIdValue, cellAddress(2, 3));
