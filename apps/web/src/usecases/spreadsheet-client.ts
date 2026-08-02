@@ -8,7 +8,6 @@ import {
   Worksheet,
   cellIdParts,
   formatA1Address,
-  recalculate,
   workbookChangeSet,
   type CellAddress,
   type CellId,
@@ -19,6 +18,10 @@ import {
 } from "@gridline/core/domain";
 
 import type { SpreadsheetClient } from "@/usecases/spreadsheet-client.port";
+import {
+  createHttpCalculationObservationClient,
+  type CalculationObservationClient,
+} from "@/persistence/http-calculation-observation.client";
 import { createHttpSpreadsheetRepositories } from "@/persistence/http-workbook.repository";
 
 import {
@@ -55,18 +58,13 @@ const serverRepositorySource: RepositorySource = () =>
 const cellAddressFor = (id: CellId): string =>
   formatA1Address(cellIdParts(id).address);
 
-const calculatedState = (
+const calculatedState = async (
   workbook: Workbook,
-  previous?: CalculatedWorkbookState,
-): CalculatedWorkbookState => ({
-  // Workbook が正本であり、CalculationSnapshot はそこから都度導出する読み取りモデルである。
+  calculationObservations: CalculationObservationClient,
+): Promise<CalculatedWorkbookState> => ({
+  // Responseは生成直後のSnapshotであり、DBへ追記した過去の観測値は読み戻さない。
   workbook,
-  snapshot: recalculate(
-    workbook,
-    previous === undefined
-      ? undefined
-      : { workbook: previous.workbook, snapshot: previous.snapshot },
-  ),
+  snapshot: await calculationObservations.create(workbook),
 });
 
 /**
@@ -75,6 +73,8 @@ const calculatedState = (
  */
 export function createSpreadsheetClient(
   repositorySource: RepositorySource = serverRepositorySource,
+  calculationObservations: CalculationObservationClient =
+    createHttpCalculationObservationClient(),
 ): SpreadsheetClient {
   let lifecycle: ClientLifecycle = { kind: "idle" };
   let repositoriesPromise: Promise<DisposableRepositories> | undefined;
@@ -101,7 +101,7 @@ export function createSpreadsheetClient(
     );
     assertActive();
     if (existing !== null) {
-      return calculatedState(existing);
+      return calculatedState(existing, calculationObservations);
     }
 
     // 初回だけ Seed を保存する。同時起動で作成に負けた場合は、勝者が保存した状態を読み直す。
@@ -109,7 +109,7 @@ export function createSpreadsheetClient(
     const creation = await createWorkbook(activeRepositories, seed);
     if (creation.kind === "created") {
       assertActive();
-      return calculatedState(seed);
+      return calculatedState(seed, calculationObservations);
     }
     const concurrent = await findWorkbook(
       activeRepositories,
@@ -119,7 +119,7 @@ export function createSpreadsheetClient(
     if (concurrent === null) {
       throw new Error("Workbook was concurrently removed during creation.");
     }
-    return calculatedState(concurrent);
+    return calculatedState(concurrent, calculationObservations);
   };
 
   const readyState = (): Promise<CalculatedWorkbookState> => {
@@ -154,13 +154,13 @@ export function createSpreadsheetClient(
     }
   };
 
-  const activate = (
+  const activate = async (
     source: Workbook,
-    previous?: CalculatedWorkbookState,
-  ): CalculatedWorkbookState => {
+  ): Promise<CalculatedWorkbookState> => {
     assertActive();
-    // 永続化に成功した Workbook だけを正本として採用し、その後に表示状態を再計算する。
-    const state = calculatedState(source, previous);
+    // 永続化に成功したWorkbookだけをServerで再計算し、その実行結果を観測記録へ残す。
+    const state = await calculatedState(source, calculationObservations);
+    assertActive();
     lifecycle = { kind: "ready", state };
     return state;
   };
@@ -231,7 +231,7 @@ export function createSpreadsheetClient(
       if (result.kind !== "created") {
         throw new Error("The active WorkbookRevision is no longer available.");
       }
-      const state = activate(result.workbook, current);
+      const state = await activate(result.workbook);
       return view(state, worksheet.id);
     },
 
@@ -266,7 +266,7 @@ export function createSpreadsheetClient(
       if (result.kind !== "created") {
         throw new Error("The active WorkbookRevision is no longer available.");
       }
-      const state = activate(result.workbook, current);
+      const state = await activate(result.workbook);
       return view(state, nextActiveWorksheet.id);
     },
 
@@ -299,7 +299,7 @@ export function createSpreadsheetClient(
             : "The active WorkbookRevision is no longer available.",
         );
       }
-      const state = activate(result.workbook, current);
+      const state = await activate(result.workbook);
       return view(state);
     },
 
@@ -315,11 +315,12 @@ export function createSpreadsheetClient(
     async recalculate() {
       const current = await readyState();
       assertActive();
-      // 明示的な再計算は正本を変更しないため、Revision の作成や永続化は行わない。
+      // 明示的な再計算もServerで新しく生成し、同じRevisionの別観測として追記する。
       const state: CalculatedWorkbookState = {
         workbook: current.workbook,
-        snapshot: recalculate(current.workbook),
+        snapshot: await calculationObservations.create(current.workbook),
       };
+      assertActive();
       lifecycle = { kind: "ready", state };
       return view(state);
     },

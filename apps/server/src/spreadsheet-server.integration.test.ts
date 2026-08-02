@@ -28,6 +28,7 @@ import {
   workbookFromResource,
   workbookResource,
 } from "./presentation/http/workbook.resource";
+import { createPrismaDatabase } from "./persistence/prisma/prisma-client.factory";
 
 const temporaryDirectories: string[] = [];
 const activeServers: SpreadsheetHttpServer[] = [];
@@ -36,6 +37,7 @@ const seed = (): Workbook => {
   const id = workbookId("server-integration-workbook");
   const sheetId = worksheetId("server-integration-sheet");
   const firstCellId = cellId(sheetId, parseA1Address("A1"));
+  const formulaCellId = cellId(sheetId, parseA1Address("B1"));
   const firstRevision = revisionNumber(0);
   return new Workbook({
     id,
@@ -51,6 +53,14 @@ const seed = (): Workbook => {
           new Cell({
             id: firstCellId,
             content: parseCellInput("42"),
+            modifiedRevision: firstRevision,
+          }),
+        ],
+        [
+          formulaCellId,
+          new Cell({
+            id: formulaCellId,
+            content: parseCellInput("=A1+1"),
             modifiedRevision: firstRevision,
           }),
         ],
@@ -82,6 +92,74 @@ afterEach(async () => {
 });
 
 describe("Hono + SQLite Workbook API integration", () => {
+  it("Serverで生成したCalculationSnapshotを返して実行ごとに観測記録へ追記する", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, "gridline.sqlite3");
+    const { server, baseUrl } = await startServer(databasePath);
+    const workbook = seed();
+    await fetch(`${baseUrl}/workbooks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(workbookResource(workbook)),
+    });
+
+    const generate = () =>
+      fetch(
+        `${baseUrl}/workbooks/${encodeURIComponent(String(workbook.id))}/calculation-observations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceRevision: 0 }),
+        },
+      );
+    const first = await generate();
+    const second = await generate();
+
+    expect(first.status).toBe(201);
+    expect(await first.json()).toEqual({
+      sourceRevision: 0,
+      values: [
+        {
+          cellId: "server-integration-sheet!A1",
+          value: { kind: "number", value: 42 },
+        },
+        {
+          cellId: "server-integration-sheet!B1",
+          value: { kind: "number", value: 43 },
+        },
+      ],
+      trace: {
+        dirtyCellIds: [
+          "server-integration-sheet!A1",
+          "server-integration-sheet!B1",
+        ],
+        evaluationOrder: ["server-integration-sheet!B1"],
+        cycles: [],
+      },
+    });
+    expect(second.status).toBe(201);
+    const staleRevision = await fetch(
+      `${baseUrl}/workbooks/${encodeURIComponent(String(workbook.id))}/calculation-observations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceRevision: 1 }),
+      },
+    );
+    expect(staleRevision.status).toBe(409);
+
+    await closeServer(server);
+    const database = createPrismaDatabase(databasePath);
+    try {
+      await expect(
+        database.client.calculationObservationRecord.count(),
+      ).resolves.toBe(2);
+    } finally {
+      await database.close();
+    }
+  });
+
   it("Workbook集約を作成・更新し、Server再起動後も取得する", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);

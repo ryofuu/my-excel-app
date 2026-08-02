@@ -1,0 +1,11 @@
+# CalculationSnapshotを観測記録として追記する
+
+`WorkbookRevision`を正本とする判断は維持しつつ、Serverで`Recalculation`を実行するたびに、生成した`CalculationSnapshot`の複製を観測用RecordとしてSQLiteへ追記する。観測Recordは計算、表示、編集、競合判定の入力にはせず、削除しても同じ`WorkbookRevision`から再生成できる。
+
+同じ`WorkbookRevision`を複数回再計算した場合も、実行ごとに別の`CalculationObservationRecord`を作る。これはRevision単位のCacheではなく、実際に何が生成されたかを確認する記録だからである。`CalculationObservationRepository`は`create`だけを公開し、読み取り操作をDomainやUseCaseへ提供しない。
+
+Webから計算済みの値を保存要求として受け取らない。Webは`WorkbookId`と期待する`RevisionNumber`をServerへ渡し、Serverが保存済みの`Workbook`を取得して`recalculate`を実行する。Serverは生成直後のSnapshotをHTTP Responseへ返し、同じ実行結果を観測Recordへ保存する。Response生成時も過去の観測Recordは読み取らない。
+
+Prismaでは、実行単位の`CalculationObservationRecord`とCell単位の`CalculationCellValueRecord`に分ける。CellValueは`kind`とNumber、Text、Boolean、Errorの型別Columnへ保存し、FormulaAnalysis、DependencyGraph、CalculationTraceは観測時点のJSONとして残す。これによりSQLiteを直接見ても主要な値を理解でき、詳細な解析情報も失わない。
+
+観測Recordは`WorkbookRecord`削除時にCascade削除する。将来、保存件数の上限や古い観測Recordの削除を導入しても、正本と計算結果の意味には影響しない。

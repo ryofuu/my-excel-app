@@ -2,6 +2,7 @@ import { serve, type ServerType } from "@hono/node-server";
 
 import { createPrismaDatabase } from "../../persistence/prisma/prisma-client.factory";
 import { initializePrismaSchema } from "../../persistence/prisma/prisma-schema.initializer";
+import { createPrismaCalculationObservationRepository } from "../../persistence/prisma/prisma-calculation-observation.repository";
 import { createPrismaWorkbookRepository } from "../../persistence/prisma/prisma-workbook.repository";
 import { createSpreadsheetHttpApp } from "./spreadsheet-http-app.factory";
 
@@ -37,8 +38,12 @@ export const createSpreadsheetHttpServer = (
   const port = options.port ?? 0;
   const database = createPrismaDatabase(options.databasePath);
   const initialized = initializePrismaSchema(database.client);
-  const repository = createPrismaWorkbookRepository(database.client);
-  const app = createSpreadsheetHttpApp(repository);
+  const repositories = {
+    workbooks: createPrismaWorkbookRepository(database.client),
+    calculationObservations:
+      createPrismaCalculationObservationRepository(database.client),
+  };
+  const app = createSpreadsheetHttpApp(repositories);
   let server: ServerType | undefined;
 
   return {
