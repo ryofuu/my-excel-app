@@ -57,6 +57,108 @@ const numberChange = (
   });
 
 describe("in-memory workbook repositories", () => {
+  it("creates a Worksheet from the next complete Worksheet snapshot", async () => {
+    const repositories = createInMemoryRepositories();
+    const initial = seed();
+    await repositories.workbooks.create(initial);
+    const secondWorksheet = new Worksheet({
+      id: worksheetId("worksheet-2"),
+      name: worksheetName("Sheet2"),
+    });
+
+    const created = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: initial.workbook.id,
+        baseRevision: revisionNumber(0),
+        cellChanges: [],
+        nextWorksheets: [initial.worksheet, secondWorksheet],
+      }),
+    );
+
+    expect(created.kind).toBe("created");
+    if (created.kind === "created") {
+      expect(created.state.revision.number).toBe(revisionNumber(1));
+      expect(created.state.revision.worksheets).toEqual([
+        initial.worksheet,
+        secondWorksheet,
+      ]);
+    }
+  });
+
+  it("deletes a Worksheet and its Cells in one revision", async () => {
+    const repositories = createInMemoryRepositories();
+    const initial = seed();
+    await repositories.workbooks.create(initial);
+    const secondWorksheet = new Worksheet({
+      id: worksheetId("worksheet-2"),
+      name: worksheetName("Sheet2"),
+    });
+    await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: initial.workbook.id,
+        baseRevision: revisionNumber(0),
+        cellChanges: [],
+        nextWorksheets: [initial.worksheet, secondWorksheet],
+      }),
+    );
+    const secondCell = cellId(secondWorksheet.id, cellAddress(1, 1));
+    await repositories.revisions.create(
+      numberChange(initial.workbook.id, secondWorksheet.id, 1, 1, 1, 42),
+    );
+
+    const deleted = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: initial.workbook.id,
+        baseRevision: revisionNumber(2),
+        cellChanges: [],
+        nextWorksheets: [initial.worksheet],
+      }),
+    );
+
+    expect(deleted.kind).toBe("created");
+    if (deleted.kind === "created") {
+      expect(deleted.state.revision.number).toBe(revisionNumber(3));
+      expect(deleted.state.revision.worksheets).toEqual([initial.worksheet]);
+      expect(deleted.state.revision.cells.has(secondCell)).toBe(false);
+    }
+  });
+
+  it("returns an EditConflict when a stale Cell edit targets a deleted Worksheet", async () => {
+    const repositories = createInMemoryRepositories();
+    const initial = seed();
+    await repositories.workbooks.create(initial);
+    const secondWorksheet = new Worksheet({
+      id: worksheetId("worksheet-2"),
+      name: worksheetName("Sheet2"),
+    });
+    await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: initial.workbook.id,
+        baseRevision: revisionNumber(0),
+        cellChanges: [],
+        nextWorksheets: [initial.worksheet, secondWorksheet],
+      }),
+    );
+    await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: initial.workbook.id,
+        baseRevision: revisionNumber(1),
+        cellChanges: [],
+        nextWorksheets: [initial.worksheet],
+      }),
+    );
+    const staleCell = cellId(secondWorksheet.id, cellAddress(1, 1));
+
+    const stale = await repositories.revisions.create(
+      numberChange(initial.workbook.id, secondWorksheet.id, 1, 1, 1, 42),
+    );
+
+    expect(stale).toEqual({
+      kind: "edit-conflict",
+      conflictingCellIds: [staleCell],
+    });
+  });
+
   it("accepts disjoint stale edits while creating a sequential revision", async () => {
     const repositories = createInMemoryRepositories();
     const initial = seed();

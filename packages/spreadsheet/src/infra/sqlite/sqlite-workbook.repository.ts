@@ -173,9 +173,6 @@ const modifiedRevisionFor = (
 };
 
 const assertDistinctCellChanges = (cells: readonly CellStateDto[]): void => {
-  if (cells.length === 0) {
-    throw new RangeError("WorkbookChangeSet must contain at least one CellChange.");
-  }
   const seen = new Set<string>();
   for (const cell of cells) {
     if (cell.cellId !== cellIdFor(cell.worksheetId, cell.row, cell.column)) {
@@ -188,6 +185,85 @@ const assertDistinctCellChanges = (cells: readonly CellStateDto[]): void => {
       );
     }
     seen.add(coordinate);
+  }
+};
+
+const assertNextWorksheets = (
+  worksheets: readonly WorksheetDto[] | undefined,
+): void => {
+  if (worksheets === undefined) return;
+  if (worksheets.length === 0) {
+    throw new RangeError("WorkbookChangeSet must retain at least one Worksheet.");
+  }
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  worksheets.forEach((worksheet, position) => {
+    if (worksheet.id.trim().length === 0 || worksheet.id.includes("!")) {
+      throw new RangeError(`Invalid Worksheet id: ${worksheet.id}.`);
+    }
+    if (worksheet.name.trim().length === 0) {
+      throw new RangeError("Worksheet name must not be empty.");
+    }
+    if (worksheet.position !== position) {
+      throw new RangeError("Worksheet positions must be contiguous and ordered.");
+    }
+    if (ids.has(worksheet.id)) {
+      throw new RangeError(`Duplicate Worksheet id: ${worksheet.id}.`);
+    }
+    if (names.has(worksheet.name)) {
+      throw new RangeError(`Duplicate Worksheet name: ${worksheet.name}.`);
+    }
+    ids.add(worksheet.id);
+    names.add(worksheet.name);
+  });
+};
+
+const persistWorksheetSnapshot = (
+  database: SqlDatabase,
+  workbookId: string,
+  worksheets: readonly WorksheetDto[],
+): void => {
+  const nextIds = new Set(worksheets.map((worksheet) => worksheet.id));
+  const current = query(
+    database,
+    `SELECT id, name, position
+       FROM worksheets
+      WHERE workbook_id = ?
+      ORDER BY position ASC`,
+    [workbookId],
+  ).map(readWorksheet);
+
+  for (const worksheet of current) {
+    if (!nextIds.has(worksheet.id)) {
+      execute(
+        database,
+        "DELETE FROM worksheets WHERE workbook_id = ? AND id = ?",
+        [workbookId, worksheet.id],
+      );
+    }
+  }
+
+  const currentById = new Map(
+    current.map((worksheet) => [worksheet.id, worksheet]),
+  );
+  for (const worksheet of worksheets) {
+    const existing = currentById.get(worksheet.id);
+    if (existing === undefined) {
+      execute(
+        database,
+        `INSERT INTO worksheets (workbook_id, id, name, position)
+         VALUES (?, ?, ?, ?)`,
+        [workbookId, worksheet.id, worksheet.name, worksheet.position],
+      );
+      continue;
+    }
+    execute(
+      database,
+      `UPDATE worksheets
+          SET name = ?, position = ?
+        WHERE workbook_id = ? AND id = ?`,
+      [worksheet.name, worksheet.position, workbookId, worksheet.id],
+    );
   }
 };
 
@@ -269,15 +345,23 @@ export const deleteWorkbookInDatabase = (
 };
 
 /**
- * Applies just the changed cell rows. Tombstones remain in `cells`, so
- * a delete made after the caller's base revision conflicts just like an edit.
+ * Applies sparse Cell changes and, when supplied, the complete ordered
+ * Worksheet snapshot. Cell tombstones make a stale delete conflict like an
+ * edit; structural snapshots require the current revision.
  */
 export const createWorkbookRevisionInDatabase = (
   database: SqlDatabase,
   changeSet: WorkbookChangeSetDto,
 ): WorkbookRevisionCreateDtoResult =>
   transaction(database, () => {
+    if (
+      changeSet.cellChanges.length === 0 &&
+      changeSet.nextWorksheets === undefined
+    ) {
+      throw new RangeError("WorkbookChangeSet must change Cells or Worksheets.");
+    }
     assertDistinctCellChanges(changeSet.cellChanges);
+    assertNextWorksheets(changeSet.nextWorksheets);
     const workbook = findWorkbookRow(database, changeSet.workbookId);
     if (!workbook) {
       return { kind: "workbook-not-found" };
@@ -291,6 +375,46 @@ export const createWorkbookRevisionInDatabase = (
         kind: "revision-not-found",
         requestedRevision: changeSet.baseRevision,
       };
+    }
+    if (
+      changeSet.nextWorksheets !== undefined &&
+      changeSet.baseRevision !== workbook.currentRevision
+    ) {
+      return {
+        kind: "revision-not-found",
+        requestedRevision: changeSet.baseRevision,
+      };
+    }
+
+    const currentRevision = findRevision(
+      database,
+      changeSet.workbookId,
+      workbook.currentRevision,
+    );
+    if (currentRevision === null) {
+      throw new Error("Current WorkbookRevision could not be read from the database.");
+    }
+    const nextWorksheets =
+      changeSet.nextWorksheets ?? currentRevision.worksheets;
+    const nextWorksheetIds = new Set(
+      nextWorksheets.map((worksheet) => worksheet.id),
+    );
+    const cellsWithoutWorksheet = changeSet.cellChanges
+      .filter((cell) => !nextWorksheetIds.has(cell.worksheetId))
+      .map((cell) => cell.cellId);
+    if (cellsWithoutWorksheet.length > 0) {
+      if (
+        changeSet.nextWorksheets === undefined &&
+        changeSet.baseRevision < workbook.currentRevision
+      ) {
+        return {
+          kind: "edit-conflict",
+          conflictingCellIds: cellsWithoutWorksheet,
+        };
+      }
+      throw new RangeError(
+        "CellChange targets a Worksheet absent from the next revision.",
+      );
     }
 
     const conflictingCellIds = changeSet.cellChanges
@@ -309,6 +433,13 @@ export const createWorkbookRevisionInDatabase = (
     }
 
     const nextRevision = workbook.currentRevision + 1;
+    if (changeSet.nextWorksheets !== undefined) {
+      persistWorksheetSnapshot(
+        database,
+        changeSet.workbookId,
+        changeSet.nextWorksheets,
+      );
+    }
     for (const cell of changeSet.cellChanges) {
       persistCell(database, changeSet.workbookId, cell, nextRevision);
     }

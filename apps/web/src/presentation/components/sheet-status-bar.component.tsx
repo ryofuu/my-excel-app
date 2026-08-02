@@ -1,22 +1,80 @@
-import { Check, CircleGauge, ZoomIn, ZoomOut } from "lucide-react";
+import { Check, CircleGauge, Plus, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import { Button } from "@/presentation/components/ui/button.component";
-import type { CellView } from "@/usecases/spreadsheet-client.port";
+import type { CellView, WorksheetView } from "@/usecases/spreadsheet-client.port";
 
 type SheetStatusBarProps = {
   readonly selectedAddress: string;
   readonly selectedCell?: CellView;
+  readonly worksheets: readonly WorksheetView[];
+  readonly activeWorksheetId?: string;
+  readonly isBusy: boolean;
   readonly revision: number;
   readonly zoom: number;
+  readonly onCreateWorksheet: () => void;
+  readonly onDeleteWorksheet: () => void;
+  readonly onOpenWorksheet: (worksheetId: string) => void;
   readonly onZoomChange: (zoom: number) => void;
 };
 
-export function SheetStatusBar({ selectedAddress, selectedCell, revision, zoom, onZoomChange }: SheetStatusBarProps) {
+export function SheetStatusBar({
+  selectedAddress,
+  selectedCell,
+  worksheets,
+  activeWorksheetId,
+  isBusy,
+  revision,
+  zoom,
+  onCreateWorksheet,
+  onDeleteWorksheet,
+  onOpenWorksheet,
+  onZoomChange,
+}: SheetStatusBarProps) {
   const percentage = Math.round(zoom * 100);
   return (
     <footer className="sheet-statusbar">
-      <div className="sheet-tabs">
-        <span className="sheet-tab sheet-tab--active">Sheet1</span>
+      <div aria-label="Worksheets" className="sheet-tabs" role="tablist">
+        <Button
+          aria-label="Create worksheet"
+          className="sheet-add"
+          disabled={isBusy}
+          onClick={onCreateWorksheet}
+          size="icon-sm"
+          variant="ghost"
+        >
+          <Plus className="size-3.5" />
+        </Button>
+        {worksheets.map((worksheet) => {
+          const active = worksheet.id === activeWorksheetId;
+          return (
+            <div
+              className={`sheet-tab-shell ${active ? "sheet-tab-shell--active" : ""}`}
+              key={worksheet.id}
+            >
+              <button
+                aria-selected={active}
+                className="sheet-tab"
+                disabled={isBusy}
+                onClick={() => onOpenWorksheet(worksheet.id)}
+                role="tab"
+                type="button"
+              >
+                {worksheet.name}
+              </button>
+              {active && worksheets.length > 1 && (
+                <button
+                  aria-label={`Delete ${worksheet.name}`}
+                  className="sheet-tab-delete"
+                  disabled={isBusy}
+                  onClick={onDeleteWorksheet}
+                  type="button"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="status-center">
         <span className="status-ready"><Check className="size-3" /> Ready</span>

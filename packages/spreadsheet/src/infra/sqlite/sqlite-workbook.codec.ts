@@ -126,4 +126,15 @@ export const toWorkbookChangeSetDto = (
       modifiedRevision: -1,
     };
   }),
+  ...(changeSet.nextWorksheets === undefined
+    ? {}
+    : {
+        nextWorksheets: changeSet.nextWorksheets.map(
+          (worksheet, position) => ({
+            id: String(worksheet.id),
+            name: String(worksheet.name),
+            position,
+          }),
+        ),
+      }),
 });

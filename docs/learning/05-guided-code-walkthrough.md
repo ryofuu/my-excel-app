@@ -103,9 +103,11 @@ B4、C5、C6など、変更されていないLiteralや無関係なFormulaの値
 - CellIdを`A4`形式へ戻す
 - CellContentをFormula bar用の入力文字列へ戻す
 - CellValueを表示文字列へ変換する
-- TraceをDirtyCellと評価順として公開する
+- Workbook全体のTraceとErrorを選択中のWorksheetへ絞って公開する
 
 React componentはDomain EntityやSQLite rowを直接操作しません。
+
+CalculationSnapshot自体はWorkbook全体で1つです。ただしA1という表示だけでは所属Worksheetを区別できないため、Sheet1を表示しているときにSheet2のA1をDirtyCellとして見せません。保存状態や計算状態を分割するのではなく、View境界で表示対象だけを選びます。
 
 ## Inspectorで確認する
 
@@ -124,6 +126,28 @@ C4を選択して、次を確認します。
 Inspectorの組み立ては[calculationInspection](../../apps/web/src/infra/spreadsheet-view.projection.ts)にあります。
 
 ## 次に試す実験
+
+### WorksheetのRevisionを観察する
+
+下部の`+`からSheet2を作り、A1へ`42`を入力してからSheet1へ戻ります。
+
+1. Sheet2作成でRevisionが1つ進む
+2. Sheet2のA1編集でもう1つ進む
+3. Sheet1へ切り替えてもRevisionは進まない
+4. Sheet2へ戻るとA1の`42`が残る
+5. Sheet2を削除するとRevisionが進み、Sheet2のCellも消える
+6. 最後に残ったSheet1は削除できない
+
+切替は表示対象の選択であり正本の変更ではありません。作成と削除はWorkbookRevisionを構成するWorksheet構造の変更です。この違いをRevision番号で観察できます。
+
+SQLite CLIを別terminalで開くと、物理状態も確認できます。
+
+```sql
+SELECT id, name, position FROM worksheets ORDER BY position;
+SELECT worksheet_id, row_number, column_number, content_json FROM cells;
+```
+
+Sheet2削除後は、そのWorksheet行と所属Cell行が同じtransactionで消えます。
 
 ### Parse Errorを観察する
 
@@ -207,6 +231,7 @@ C4をC10へコピーします。
 - 単項`+ -`
 - `SUM`
 - 相対参照を保つFormulaコピー
+- Worksheetの作成・切替・削除
 - DirtyCellによる増分Value再計算
 - 循環参照とError伝播
 
@@ -220,6 +245,8 @@ C4をC10へコピーします。
 - DirtyCellと「値が変わったCell」の違い
 - なぜ循環参照検出後にトポロジカルソートするのか
 - なぜ複数セル貼り付けが1つのWorkbookChangeSetなのか
+- なぜWorksheet変更は完全な順序付きSnapshotなのか
+- なぜCell変更は古いRevisionからmergeできても、Worksheet構造変更はできないのか
 - なぜ削除したCellにもtombstoneが必要なのか
 
 ここまで説明できれば、Gridlineのコードだけでなく、表計算エンジンを設計するときの主要な論点を捉えられています。

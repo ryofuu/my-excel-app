@@ -25,7 +25,7 @@ flowchart LR
 
 - `WorkbookRevision`: 利用者が入力した内容の、ある時点の完全な状態
 - `CalculationSnapshot`: 1つの`WorkbookRevision`から計算した、互いに整合する値と計算メタデータ
-- `WorkbookChangeSet`: 1回の利用者操作で変更するセルの集合
+- `WorkbookChangeSet`: 1回の利用者操作で変更するCellとWorksheet構造
 - `CellContent`: 入力の正本。LiteralまたはFormula
 - `CellValue`: 計算結果。Blank、Number、Text、Boolean、Error
 
@@ -78,6 +78,7 @@ pnpm dev
 - Formulaの解析と依存グラフ構築は、現在はRevisionごとに全Formulaを対象に行います。
 - Excel互換の暗黙的な型変換ではなく、意図的に単純なstrict type規則を使います。
 - CalculationSnapshotは保存せず、WorkbookRevisionから再生成します。
+- CalculationSnapshotはWorkbook全体を対象にし、UIのTraceとErrorは選択中のWorksheetへ絞って表示します。
 - SQLiteは現在のRevisionを物理化して保存し、Revision履歴全体は保存しません。
 - DBは`data/gridline.sqlite3`にあり、SQLite CLIで直接観察できます。
 - クロスシート参照、配列数式、揮発性関数、反復計算、並列評価は未実装です。

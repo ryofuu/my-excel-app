@@ -66,6 +66,89 @@ afterEach(async () => {
 });
 
 describe("server-side SQLite Repository integration", () => {
+  it("persists a created Worksheet through the HTTP Repository", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, "gridline.sqlite3");
+    const server = createSpreadsheetHttpServer({ databasePath });
+    const address = await server.listen();
+    const repositories = createHttpSpreadsheetRepositories({
+      baseUrl: `${address.origin}/api`,
+    });
+    const created = await repositories.workbooks.create(seed());
+    const secondWorksheet = new Worksheet({
+      id: worksheetId("server-integration-sheet-2"),
+      name: worksheetName("Sheet2"),
+    });
+
+    const revised = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: created.revision.number,
+        cellChanges: [],
+        nextWorksheets: [...created.revision.worksheets, secondWorksheet],
+      }),
+    );
+
+    expect(revised.kind).toBe("created");
+    if (revised.kind === "created") {
+      expect(revised.state.revision.worksheets.map((sheet) => sheet.name)).toEqual([
+        worksheetName("Sheet1"),
+        worksheetName("Sheet2"),
+      ]);
+    }
+    await server.close();
+  });
+
+  it("deletes a Worksheet and its Cells through the HTTP Repository", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
+    temporaryDirectories.push(directory);
+    const databasePath = join(directory, "gridline.sqlite3");
+    const firstServer = createSpreadsheetHttpServer({ databasePath });
+    const firstAddress = await firstServer.listen();
+    const firstRepositories = createHttpSpreadsheetRepositories({
+      baseUrl: `${firstAddress.origin}/api`,
+    });
+    const created = await firstRepositories.workbooks.create(seed());
+    const secondWorksheet = new Worksheet({
+      id: worksheetId("server-integration-sheet-2"),
+      name: worksheetName("Sheet2"),
+    });
+    const withSecond = await firstRepositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: created.revision.number,
+        cellChanges: [],
+        nextWorksheets: [...created.revision.worksheets, secondWorksheet],
+      }),
+    );
+    if (withSecond.kind !== "created") {
+      throw new Error("Expected the second Worksheet to be created.");
+    }
+
+    const deleted = await firstRepositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: withSecond.state.revision.number,
+        cellChanges: [],
+        nextWorksheets: [secondWorksheet],
+      }),
+    );
+    await firstServer.close();
+
+    const secondServer = createSpreadsheetHttpServer({ databasePath });
+    const secondAddress = await secondServer.listen();
+    const secondRepositories = createHttpSpreadsheetRepositories({
+      baseUrl: `${secondAddress.origin}/api`,
+    });
+    const reopened = await secondRepositories.workbooks.find(created.workbook.id);
+
+    expect(deleted.kind).toBe("created");
+    expect(reopened?.revision.worksheets).toEqual([secondWorksheet]);
+    expect(reopened?.revision.cells.size).toBe(0);
+    await secondServer.close();
+  });
+
   it("finds a Workbook after the HTTP server reopens the same SQLite file", async () => {
     const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
     temporaryDirectories.push(directory);
@@ -223,6 +306,105 @@ describe("server-side SQLite Repository integration", () => {
     expect(stale).toEqual({
       kind: "edit-conflict",
       conflictingCellIds: [target],
+    });
+    await server.close();
+  });
+
+  it("rejects a stale Cell change after its Worksheet was deleted", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
+    temporaryDirectories.push(directory);
+    const server = createSpreadsheetHttpServer({
+      databasePath: join(directory, "gridline.sqlite3"),
+    });
+    const address = await server.listen();
+    const repositories = createHttpSpreadsheetRepositories({
+      baseUrl: `${address.origin}/api`,
+    });
+    const created = await repositories.workbooks.create(seed());
+    const secondWorksheet = new Worksheet({
+      id: worksheetId("server-integration-sheet-2"),
+      name: worksheetName("Sheet2"),
+    });
+    const withSecond = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: created.revision.number,
+        cellChanges: [],
+        nextWorksheets: [...created.revision.worksheets, secondWorksheet],
+      }),
+    );
+    if (withSecond.kind !== "created") {
+      throw new Error("Expected the second Worksheet to be created.");
+    }
+    const deleted = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: withSecond.state.revision.number,
+        cellChanges: [],
+        nextWorksheets: created.revision.worksheets,
+      }),
+    );
+    const staleTarget = cellId(secondWorksheet.id, parseA1Address("A1"));
+    const staleContent = parseCellInput("99");
+    if (staleContent === null) throw new Error("Expected stale CellContent.");
+
+    const stale = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: withSecond.state.revision.number,
+        cellChanges: [{ cellId: staleTarget, content: staleContent }],
+      }),
+    );
+
+    expect(deleted.kind).toBe("created");
+    expect(stale).toEqual({
+      kind: "edit-conflict",
+      conflictingCellIds: [staleTarget],
+    });
+    await server.close();
+  });
+
+  it("rejects a structural Worksheet change from a stale revision", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "gridline-server-"));
+    temporaryDirectories.push(directory);
+    const server = createSpreadsheetHttpServer({
+      databasePath: join(directory, "gridline.sqlite3"),
+    });
+    const address = await server.listen();
+    const repositories = createHttpSpreadsheetRepositories({
+      baseUrl: `${address.origin}/api`,
+    });
+    const created = await repositories.workbooks.create(seed());
+    const target = created.revision.cells.keys().next().value;
+    const content = parseCellInput("43");
+    if (target === undefined || content === null) {
+      throw new Error("Expected a seeded Cell and CellContent.");
+    }
+    const edited = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: created.revision.number,
+        cellChanges: [{ cellId: target, content }],
+      }),
+    );
+    const secondWorksheet = new Worksheet({
+      id: worksheetId("server-integration-sheet-2"),
+      name: worksheetName("Sheet2"),
+    });
+
+    const stale = await repositories.revisions.create(
+      workbookChangeSet({
+        workbookId: created.workbook.id,
+        baseRevision: created.revision.number,
+        cellChanges: [],
+        nextWorksheets: [...created.revision.worksheets, secondWorksheet],
+      }),
+    );
+
+    expect(edited.kind).toBe("created");
+    expect(stale).toEqual({
+      kind: "revision-not-found",
+      requestedRevision: created.revision.number,
     });
     await server.close();
   });

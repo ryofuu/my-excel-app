@@ -51,6 +51,7 @@ export type WorkbookChangeSetDto = Readonly<{
   workbookId: string;
   baseRevision: number;
   cellChanges: readonly CellStateDto[];
+  nextWorksheets?: readonly WorksheetDto[];
 }>;
 
 export type WorkbookRevisionCreateDtoResult =

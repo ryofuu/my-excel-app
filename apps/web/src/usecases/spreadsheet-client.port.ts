@@ -41,11 +41,17 @@ export type CalculationInspection = {
 export type WorkbookView = {
   readonly id: string;
   readonly name: string;
-  readonly worksheetName: string;
+  readonly worksheets: readonly WorksheetView[];
+  readonly activeWorksheetId: string;
   readonly revision: number;
   readonly cells: ReadonlyMap<string, CellView>;
   readonly dirtyCells: readonly string[];
   readonly evaluationOrder: readonly string[];
+};
+
+export type WorksheetView = {
+  readonly id: string;
+  readonly name: string;
 };
 
 export type CellInput = {
@@ -56,7 +62,9 @@ export type CellInput = {
 };
 
 export type SpreadsheetClient = {
-  open(): Promise<WorkbookView>;
+  open(worksheetId?: string): Promise<WorkbookView>;
+  createWorksheet(): Promise<WorkbookView>;
+  deleteWorksheet(): Promise<WorkbookView>;
   createCells(inputs: readonly CellInput[]): Promise<WorkbookView>;
   inspect(address: string): Promise<CalculationInspection>;
   recalculate(): Promise<WorkbookView>;

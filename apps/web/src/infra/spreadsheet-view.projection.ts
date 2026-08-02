@@ -42,6 +42,19 @@ const contentInput = (content: CellContent | null): string => {
 const cellAddressFor = (id: CellId): string =>
   formatA1Address(cellIdParts(id).address);
 
+const belongsToWorksheet = (
+  id: CellId,
+  worksheetId: WorksheetId,
+): boolean => cellIdParts(id).worksheetId === worksheetId;
+
+const worksheetAddresses = (
+  ids: readonly CellId[],
+  worksheetId: WorksheetId,
+): readonly string[] =>
+  ids
+    .filter((id) => belongsToWorksheet(id, worksheetId))
+    .map(cellAddressFor);
+
 const spreadsheetValue = (value: CellValue): SpreadsheetValue => {
   switch (value.kind) {
     case "blank":
@@ -118,11 +131,21 @@ export const workbookView = (
   return {
     id: state.workbook.id,
     name: state.workbook.name,
-    worksheetName: state.revision.worksheets[0]?.name ?? "Sheet1",
+    worksheets: state.revision.worksheets.map((worksheet) => ({
+      id: String(worksheet.id),
+      name: String(worksheet.name),
+    })),
+    activeWorksheetId: String(worksheetId),
     revision: Number(state.revision.number),
     cells,
-    dirtyCells: state.snapshot.trace.dirtyCellIds.map(cellAddressFor),
-    evaluationOrder: state.snapshot.trace.evaluationOrder.map(cellAddressFor),
+    dirtyCells: worksheetAddresses(
+      state.snapshot.trace.dirtyCellIds,
+      worksheetId,
+    ),
+    evaluationOrder: worksheetAddresses(
+      state.snapshot.trace.evaluationOrder,
+      worksheetId,
+    ),
   };
 };
 
@@ -137,7 +160,10 @@ export const calculationInspection = (
   const analysis = state.snapshot.formulas.get(id);
   const dependencies = state.snapshot.graph.precedentsByCell.get(id) ?? [];
   const errors = [...state.snapshot.values]
-    .filter(([, value]) => value.kind === "error")
+    .filter(
+      ([errorId, value]) =>
+        belongsToWorksheet(errorId, worksheetId) && value.kind === "error",
+    )
     .map(([errorId, value]) => {
       if (value.kind !== "error") return "";
       return `${cellAddressFor(errorId)}: ${formatCellValue(value)} — ${value.message}`;
@@ -155,8 +181,14 @@ export const calculationInspection = (
           : null,
     precedents: dependencies.map(dependencyLabel),
     dependents: dependentsOf(state.snapshot.graph, id).map(cellAddressFor),
-    dirtyCells: state.snapshot.trace.dirtyCellIds.map(cellAddressFor),
-    evaluationOrder: state.snapshot.trace.evaluationOrder.map(cellAddressFor),
+    dirtyCells: worksheetAddresses(
+      state.snapshot.trace.dirtyCellIds,
+      worksheetId,
+    ),
+    evaluationOrder: worksheetAddresses(
+      state.snapshot.trace.evaluationOrder,
+      worksheetId,
+    ),
     errors,
   };
 };

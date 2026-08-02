@@ -70,8 +70,8 @@ type Cell = {
 ```mermaid
 flowchart TB
   Workbook["Workbook<br/>id・name・currentRevision"]
-  Revision0["WorkbookRevision 0<br/>CellContentの集合"]
-  Revision1["WorkbookRevision 1<br/>CellContentの集合"]
+  Revision0["WorkbookRevision 0<br/>Worksheet順・CellContentの集合"]
+  Revision1["WorkbookRevision 1<br/>Worksheet順・CellContentの集合"]
   Snapshot0["CalculationSnapshot<br/>sourceRevision = 0"]
   Snapshot1["CalculationSnapshot<br/>sourceRevision = 1"]
 
@@ -100,11 +100,40 @@ flowchart TB
 
 複数セルの貼り付けでも、作られる次のRevisionは1つです。この構造には次の不変条件があります。
 
-- 1つ以上のCellChangeを持つ
+- 1つ以上のCellChange、変更後のWorksheet Snapshot、または両方を持つ
 - 同じCellを1つのChangeSet内で2回変更しない
 - 編集を開始した`baseRevision`を持つ
 
 UseCaseの[create-workbook-revision.usecase.ts](../../packages/spreadsheet/src/usecases/workbook-revisions/create-workbook-revision.usecase.ts)は、この操作をRepositoryへ渡して次のRevisionを作ります。
+
+## Worksheetの作成と削除もRevisionを作る
+
+WorkbookRevisionはCellContentだけでなく、Worksheetの集合と順序も含む完全な入力状態です。そのためSheet2を作る操作は、CellChangeを持たない次のChangeSetになります。
+
+```ts
+{
+  workbookId,
+  baseRevision: 3,
+  cellChanges: [],
+  nextWorksheets: [sheet1, sheet2],
+}
+```
+
+`nextWorksheets`は「Sheet2をcreateする命令」ではありません。変更後に存在するWorksheetを順番どおりに並べた完全なSnapshotです。削除なら対象を除いたSnapshotを渡します。
+
+```text
+Revision 3: [Sheet1]
+  + Sheet2
+Revision 4: [Sheet1, Sheet2]
+  - Sheet1
+Revision 5: [Sheet2]
+```
+
+この形にすると、作成・削除・将来の並べ替えを別々の動詞として増やさず、「次のRevisionを作る」という1つの操作にまとめられます。またWorksheet削除と、そのWorksheetに属するCellの削除を同じtransactionで確定できます。
+
+ただしCell変更と構造変更ではmerge規則が違います。別々のCellへの古い変更は安全に取り込めますが、古いWorksheet Snapshotを取り込むと、他のClientが追加したSheetを消す可能性があります。そのため`nextWorksheets`を含むChangeSetは、最新Revisionを基にした場合だけ受け入れます。
+
+Workbookは必ず1つ以上のWorksheetを持ちます。最後のWorksheetは削除できません。この不変条件があるため、CellIdが属する場所と、UIが表示する対象を常に1つ以上選べます。
 
 ## Cellは疎に保持する
 
@@ -121,6 +150,8 @@ UseCaseの[create-workbook-revision.usecase.ts](../../packages/spreadsheet/src/u
 1. FormulaSourceは入力の正本で、CellValueは派生結果である。
 2. WorkbookRevisionは入力状態、CalculationSnapshotは計算状態である。
 3. 1回の複数セル操作は1つのWorkbookChangeSetと1つのRevisionになる。
-4. 空のCellを大量に生成せず、入力されたCellだけを疎に保持する。
+4. Worksheetの集合と順序もWorkbookRevisionの入力状態である。
+5. Cell変更はCell単位でmergeできるが、Worksheet構造変更には最新Revisionが必要である。
+6. 空のCellを大量に生成せず、入力されたCellだけを疎に保持する。
 
 次は、FormulaSourceがどのようにTokenとASTへ変換されるかを見ます。
