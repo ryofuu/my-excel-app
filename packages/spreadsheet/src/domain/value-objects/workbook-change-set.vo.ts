@@ -1,3 +1,4 @@
+import type { Worksheet } from "../entities/worksheet.entity";
 import type { CellId } from "./cell-address.vo";
 import type { CellContent } from "./cell-content.vo";
 import type { RevisionNumber, WorkbookId } from "./identifiers.vo";
@@ -12,6 +13,8 @@ export type WorkbookChangeSet = Readonly<{
   workbookId: WorkbookId;
   baseRevision: RevisionNumber;
   cellChanges: readonly CellChange[];
+  /** Complete ordered Worksheet snapshot for the next revision. Omit when unchanged. */
+  nextWorksheets?: readonly Worksheet[];
 }>;
 
 export type EditConflict = Readonly<{
@@ -21,9 +24,17 @@ export type EditConflict = Readonly<{
   conflictingCellIds: readonly CellId[];
 }>;
 
-export const workbookChangeSet = (properties: WorkbookChangeSet): WorkbookChangeSet => {
-  if (properties.cellChanges.length === 0) {
-    throw new Error("WorkbookChangeSet must contain at least one CellChange.");
+export const workbookChangeSet = (
+  properties: WorkbookChangeSet,
+): WorkbookChangeSet => {
+  if (
+    properties.cellChanges.length === 0 &&
+    properties.nextWorksheets === undefined
+  ) {
+    throw new Error("WorkbookChangeSet must change Cells or Worksheets.");
+  }
+  if (properties.nextWorksheets?.length === 0) {
+    throw new Error("WorkbookChangeSet must retain at least one Worksheet.");
   }
 
   const seen = new Set<CellId>();
@@ -38,5 +49,8 @@ export const workbookChangeSet = (properties: WorkbookChangeSet): WorkbookChange
     workbookId: properties.workbookId,
     baseRevision: properties.baseRevision,
     cellChanges: Object.freeze([...properties.cellChanges]),
+    ...(properties.nextWorksheets === undefined
+      ? {}
+      : { nextWorksheets: Object.freeze([...properties.nextWorksheets]) }),
   };
 };

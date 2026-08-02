@@ -21,11 +21,11 @@ _Avoid_: WorkbookRevision, WorksheetId
 _Avoid_: WorkbookId, CalculationSnapshot, file version
 
 **WorkbookChangeSet**:
-1回の利用者操作として原子的に適用する、1つ以上の **CellContent** の作成・更新・削除をまとめたもの。編集の基になった **WorkbookRevision** を持ち、適用すると新しい版を作る。
+1回の利用者操作として原子的に適用する、**CellContent** の作成・更新・削除、または変更後の順序を含む完全な **Worksheet** 集合。両方を同時に含めてもよい。編集の基になった **WorkbookRevision** を持ち、適用すると新しい版を作る。
 _Avoid_: WorkbookRevision, individual keystroke, partial edit
 
 **EditConflict**:
-**WorkbookChangeSet** が変更しようとする **Cell** の **CellContent** が、編集の基になった **WorkbookRevision** より後に変更されている状態。同じ版を基にした変更でも、対象のCellが重ならなければEditConflictではない。
+**WorkbookChangeSet** が変更しようとする **Cell** の **CellContent** が、編集の基になった **WorkbookRevision** より後に変更されている状態、または対象の **Worksheet** がその後に削除された状態。同じ版を基にした変更でも、対象のCellが重ならなければEditConflictではない。
 _Avoid_: Parse error, Calculation Error, unrelated concurrent edit
 
 **Worksheet**:

@@ -4,6 +4,48 @@ import { describe, expect, it } from "vitest";
 import { createEngineSpreadsheetClient } from "./engine-spreadsheet-client.adapter";
 
 describe("engine SpreadsheetClient integration", () => {
+  it("creates and opens a blank Worksheet", async () => {
+    const repositories = createInMemoryRepositories();
+    const client = createEngineSpreadsheetClient(async () => repositories);
+    const opened = await client.open();
+
+    const created = await client.createWorksheet();
+
+    expect(created.revision).toBe(1);
+    expect(created.worksheets.map((worksheet) => worksheet.name)).toEqual([
+      "Sheet1",
+      "Sheet2",
+    ]);
+    expect(created.activeWorksheetId).not.toBe(opened.activeWorksheetId);
+    expect(created.cells.size).toBe(0);
+    expect((await client.inspect("A1")).errors).toEqual([]);
+    const firstWorksheet = await client.open(opened.activeWorksheetId);
+    expect(firstWorksheet.cells.get("C4")?.value.raw).toBe(480);
+    client.dispose();
+  });
+
+  it("deletes the active Worksheet with its Cells but retains the final Worksheet", async () => {
+    const repositories = createInMemoryRepositories();
+    const client = createEngineSpreadsheetClient(async () => repositories);
+    const opened = await client.open();
+    await client.createWorksheet();
+    await client.createCells([{ address: "A1", input: "42" }]);
+
+    const deleted = await client.deleteWorksheet();
+
+    expect(deleted.revision).toBe(3);
+    expect(deleted.worksheets).toEqual([
+      { id: opened.activeWorksheetId, name: "Sheet1" },
+    ]);
+    expect(deleted.activeWorksheetId).toBe(opened.activeWorksheetId);
+    expect(deleted.cells.get("C4")?.value.raw).toBe(480);
+    expect(deleted.dirtyCells).not.toContain("A1");
+    await expect(client.deleteWorksheet()).rejects.toThrow(
+      "at least one Worksheet",
+    );
+    client.dispose();
+  });
+
   it("opens, edits, recalculates, and inspects through one repository path", async () => {
     const repositories = createInMemoryRepositories();
     const client = createEngineSpreadsheetClient(async () => repositories);

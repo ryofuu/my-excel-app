@@ -80,6 +80,19 @@ export default function App({ client }: AppProps) {
 
   const workbookName = spreadsheet.workbook?.name ?? "Formula laboratory";
   const revision = spreadsheet.workbook?.revision ?? 1;
+  const activeWorksheet = spreadsheet.workbook?.worksheets.find(
+    (worksheet) => worksheet.id === spreadsheet.workbook?.activeWorksheetId,
+  );
+
+  const deleteWorksheet = () => {
+    if (
+      activeWorksheet === undefined ||
+      !window.confirm(`Delete ${activeWorksheet.name}? Its cells will be removed.`)
+    ) {
+      return;
+    }
+    void spreadsheet.deleteWorksheet();
+  };
 
   return (
     <TooltipProvider delayDuration={350}>
@@ -145,10 +158,18 @@ export default function App({ client }: AppProps) {
           )}
         </main>
         <SheetStatusBar
+          activeWorksheetId={spreadsheet.workbook?.activeWorksheetId}
+          isBusy={spreadsheet.isCalculating || spreadsheet.isLoading}
+          onCreateWorksheet={() => void spreadsheet.createWorksheet()}
+          onDeleteWorksheet={deleteWorksheet}
+          onOpenWorksheet={(worksheetId) =>
+            void spreadsheet.openWorksheet(worksheetId)
+          }
           onZoomChange={setZoom}
           revision={revision}
           selectedAddress={selectionLabel(spreadsheet.selection)}
           selectedCell={spreadsheet.selectedCell}
+          worksheets={spreadsheet.workbook?.worksheets ?? []}
           zoom={zoom}
         />
       </div>

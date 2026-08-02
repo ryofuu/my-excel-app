@@ -9,6 +9,7 @@ import {
   createHttpSpreadsheetRepositories,
 } from "@gridline/spreadsheet/infra";
 import {
+  Worksheet,
   cellId,
   cellIdParts,
   formulaSource,
@@ -19,6 +20,9 @@ import {
   translateFormula,
   workbookChangeSet,
   type CellId,
+  type WorksheetId,
+  worksheetId,
+  worksheetName,
 } from "@gridline/spreadsheet/domain";
 
 import type {
@@ -29,7 +33,6 @@ import type {
 import {
   formulaLaboratorySeed,
   formulaLaboratoryWorkbookId,
-  formulaLaboratoryWorksheetId,
 } from "./formula-laboratory.seed";
 import {
   calculationInspection,
@@ -83,6 +86,7 @@ export function createEngineSpreadsheetClient(
 ): SpreadsheetClient {
   let lifecycle: ClientLifecycle = { kind: "idle" };
   let repositoriesPromise: Promise<DisposableRepositories> | undefined;
+  let activeWorksheetId: WorksheetId | undefined;
 
   const assertActive = (): void => {
     if (lifecycle.kind === "disposed") {
@@ -170,20 +174,119 @@ export function createEngineSpreadsheetClient(
     return state;
   };
 
+  const activeWorksheetFor = (
+    state: CalculatedWorkbookState,
+    requestedId?: string,
+  ): WorksheetId => {
+    const requested =
+      requestedId === undefined ? activeWorksheetId : worksheetId(requestedId);
+    if (requested !== undefined) {
+      const exists = state.revision.worksheets.some(
+        (worksheet) => worksheet.id === requested,
+      );
+      if (exists) return requested;
+      if (requestedId !== undefined) {
+        throw new Error(`Worksheet not found: ${requestedId}`);
+      }
+    }
+    const first = state.revision.worksheets[0];
+    if (first === undefined) {
+      throw new Error("WorkbookRevision must contain at least one Worksheet.");
+    }
+    return first.id;
+  };
+
+  const view = (
+    state: CalculatedWorkbookState,
+    requestedId?: string,
+  ): ReturnType<typeof workbookView> => {
+    activeWorksheetId = activeWorksheetFor(state, requestedId);
+    return workbookView(state, activeWorksheetId);
+  };
+
+  const nextWorksheetName = (
+    state: CalculatedWorkbookState,
+  ): ReturnType<typeof worksheetName> => {
+    const names = new Set(
+      state.revision.worksheets.map((worksheet) => String(worksheet.name)),
+    );
+    let sequence = 1;
+    while (names.has(`Sheet${sequence}`)) sequence += 1;
+    return worksheetName(`Sheet${sequence}`);
+  };
+
   return {
-    async open() {
+    async open(worksheetIdValue) {
       const state = await readyState();
-      return workbookView(state, formulaLaboratoryWorksheetId);
+      return view(state, worksheetIdValue);
+    },
+
+    async createWorksheet() {
+      const current = await readyState();
+      const worksheet = new Worksheet({
+        id: worksheetId(`worksheet-${crypto.randomUUID()}`),
+        name: nextWorksheetName(current),
+      });
+      const result = await createWorkbookRevision(
+        await repositories(),
+        workbookChangeSet({
+          workbookId: current.workbook.id,
+          baseRevision: current.revision.number,
+          cellChanges: [],
+          nextWorksheets: [...current.revision.worksheets, worksheet],
+        }),
+      );
+      assertActive();
+      if (result.kind !== "created") {
+        throw new Error("The active WorkbookRevision is no longer available.");
+      }
+      const state = activate(result.state, current);
+      return view(state, worksheet.id);
+    },
+
+    async deleteWorksheet() {
+      const current = await readyState();
+      if (current.revision.worksheets.length === 1) {
+        throw new Error("Workbook must retain at least one Worksheet.");
+      }
+      const worksheetIdValue = activeWorksheetFor(current);
+      const currentIndex = current.revision.worksheets.findIndex(
+        (worksheet) => worksheet.id === worksheetIdValue,
+      );
+      const nextWorksheets = current.revision.worksheets.filter(
+        (worksheet) => worksheet.id !== worksheetIdValue,
+      );
+      const nextActiveWorksheet =
+        nextWorksheets[Math.max(0, currentIndex - 1)] ?? nextWorksheets[0];
+      if (nextActiveWorksheet === undefined) {
+        throw new Error("Workbook must retain at least one Worksheet.");
+      }
+      const result = await createWorkbookRevision(
+        await repositories(),
+        workbookChangeSet({
+          workbookId: current.workbook.id,
+          baseRevision: current.revision.number,
+          cellChanges: [],
+          nextWorksheets,
+        }),
+      );
+      assertActive();
+      if (result.kind !== "created") {
+        throw new Error("The active WorkbookRevision is no longer available.");
+      }
+      const state = activate(result.state, current);
+      return view(state, nextActiveWorksheet.id);
     },
 
     async createCells(inputs: readonly CellInput[]) {
       const current = await readyState();
+      const worksheetIdValue = activeWorksheetFor(current);
       if (inputs.length === 0) {
-        return workbookView(current, formulaLaboratoryWorksheetId);
+        return view(current);
       }
       const cellChanges = inputs.map(({ address, input, copiedFromAddress }) => {
         const target = cellId(
-          formulaLaboratoryWorksheetId,
+          worksheetIdValue,
           parseA1Address(address),
         );
         const translatedInput =
@@ -219,13 +322,14 @@ export function createEngineSpreadsheetClient(
         );
       }
       const state = activate(result.state, current);
-      return workbookView(state, formulaLaboratoryWorksheetId);
+      return view(state);
     },
 
     async inspect(address: string) {
+      const current = await readyState();
       return calculationInspection(
-        await readyState(),
-        formulaLaboratoryWorksheetId,
+        current,
+        activeWorksheetFor(current),
         address,
       );
     },
@@ -238,7 +342,7 @@ export function createEngineSpreadsheetClient(
         snapshot: recalculate(current.revision),
       };
       lifecycle = { kind: "ready", state };
-      return workbookView(state, formulaLaboratoryWorksheetId);
+      return view(state);
     },
 
     dispose() {

@@ -11,7 +11,8 @@ import {
 const workbook = (): WorkbookView => ({
   id: "workbook-1",
   name: "Workbook",
-  worksheetName: "Sheet1",
+  worksheets: [{ id: "worksheet-1", name: "Sheet1" }],
+  activeWorksheetId: "worksheet-1",
   revision: 0,
   cells: new Map([
     [

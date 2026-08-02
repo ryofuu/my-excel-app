@@ -22,7 +22,7 @@ Client X: 古い全体 + A1変更 ──保存──┐
 Client Y: 古い全体 + B1変更 ──保存──┘
 ```
 
-GridlineはWorkbook全体ではなく、変更Cellの集合を保存単位にします。ただしCellを1個ずつ独立保存すると複数セル貼り付けが途中状態になるため、複数のCellChangeを1つのtransactionへまとめます。
+GridlineはWorkbook全体ではなく、変更Cellの集合を保存単位にします。ただしCellを1個ずつ独立保存すると複数セル貼り付けが途中状態になるため、複数のCellChangeを1つのtransactionへまとめます。Worksheet構造を変える場合だけは、変更後の小さなWorksheet一覧を完全な順序付きSnapshotとして同じtransactionへ渡します。
 
 つまり保存単位は「Workbook全体」でも「必ず1Cell」でもなく、「1回の利用者操作」です。
 
@@ -48,6 +48,7 @@ Repositoryを交換しても、次の意味は同じです。
 - ChangeSet全体を成功または失敗させる
 - 同じCellへの古い編集をEditConflictにする
 - 重ならない古い編集は受け入れる
+- Worksheet構造変更は最新Revisionからだけ受け入れる
 
 ## SQLiteに保存するもの
 
@@ -88,11 +89,12 @@ DomainのWorkbookRevisionは、ある版の完全な入力状態です。ただ�
 [createWorkbookRevisionInDatabase](../../packages/spreadsheet/src/infra/sqlite/sqlite-workbook.repository.ts)は、1つのSQLite transaction内で次を行います。
 
 1. WorkbookとbaseRevisionを検証する
-2. 変更対象Cellの`modified_revision`を調べる
-3. 競合があれば何も書かずにEditConflictを返す
-4. 競合がなければ変更Cellだけをupsertする
-5. `current_revision`を1つ進める
-6. 完全な現在Revisionを読み返す
+2. Worksheet Snapshotがあれば、最新Revisionか、不変条件を満たすかを調べる
+3. 変更対象Cellの`modified_revision`と所属Worksheetを調べる
+4. 競合があれば何も書かずにEditConflictを返す
+5. Worksheet行と変更Cell行を必要な分だけ更新する
+6. `current_revision`を1つ進める
+7. 完全な現在Revisionを読み返す
 
 複数セル貼り付けの途中で失敗しても、一部だけ保存されません。
 
@@ -142,6 +144,28 @@ CellContentの削除は`content_json = NULL`として保存します。画面や
 
 これがtombstoneです。tombstoneがなければ、Revision 2で削除されたA1に対して、Revision 1を基にした古い編集が「A1は存在しないから未変更」と誤判定されてしまいます。
 
+## Worksheet構造の競合はCellとは別に考える
+
+Worksheetの集合と順序は、個別Cellより広いWorkbook構造です。たとえば`[Sheet1, Sheet3]`を持つRevision 3を2つのClientが開き、一方がSheet2を追加し、もう一方が古い一覧からSheet1を削除したとします。
+
+```text
+Client X: base 3 → [Sheet1, Sheet3, Sheet2]
+Client Y: base 3 → [Sheet3]
+```
+
+YのSnapshotを後からそのまま適用すると、Xが作ったSheet2まで消えます。逆に要素ごとの自動mergeは、「削除」と「維持」のどちらが利用者の意図かを判定できません。
+
+そのため、`nextWorksheets`を持つWorkbookChangeSetは次の条件で扱います。
+
+- 変更後の完全な順序付きWorksheet Snapshotとして解釈する
+- 1つ以上のWorksheetを必須にする
+- ID、名前、順序の重複や欠落を拒否する
+- `baseRevision === currentRevision`の場合だけ適用する
+
+一方、`nextWorksheets`を持たないCell変更は、従来どおりCell単位で競合を判定します。構造全体には厳しく、局所的なCell変更には並行性を残す設計です。
+
+Worksheetを削除すると、SQLiteの外部キー`ON DELETE CASCADE`によって所属Cellも同じtransactionで削除されます。削除済みWorksheetへ古いClientがCell変更を送った場合は、そのCellを復活させずEditConflictを返します。
+
 ## Node serverと通常のSQLiteファイル
 
 ブラウザはSQLiteへ直接アクセスしません。[http-spreadsheet-repositories.adapter.ts](../../packages/spreadsheet/src/infra/http/http-spreadsheet-repositories.adapter.ts)が、Repository interfaceを4つのHTTP resourceへ変換します。
@@ -186,6 +210,8 @@ Cell入力
 1. Repositoryは保存技術ではなく、Revision作成の意味を抽象化する境界である。
 2. 複数セル操作は1 transaction、1 WorkbookChangeSet、1 Revisionである。
 3. 競合はWorkbook全体ではなく、変更対象Cellの最終変更版で判定する。
-4. 削除後の競合検出にはtombstoneが必要である。
-5. 保存するのは正本だけで、計算結果は再生成する。
-6. DBファイルはserverが所有し、WebはRepository契約だけを見る。
+4. Worksheet構造は完全なSnapshotとして、最新Revisionからだけ変更する。
+5. Cell削除後の競合検出にはtombstoneが必要である。
+6. Worksheet削除では所属Cellも同じtransactionで削除する。
+7. 保存するのは正本だけで、計算結果は再生成する。
+8. DBファイルはserverが所有し、WebはRepository契約だけを見る。

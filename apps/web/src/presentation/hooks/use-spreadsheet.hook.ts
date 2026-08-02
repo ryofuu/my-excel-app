@@ -102,6 +102,56 @@ export function useSpreadsheet(client: SpreadsheetClient) {
     }
   }, [client, inspect, selection.anchor]);
 
+  const openWorksheet = useCallback(async (worksheetId: string) => {
+    setIsCalculating(true);
+    try {
+      const next = await client.open(worksheetId);
+      const initialSelection = { anchor: "A1", focus: "A1" } as const;
+      setWorkbook(next);
+      setSelection(initialSelection);
+      await inspect(initialSelection.anchor);
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Worksheet could not be opened.");
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [client, inspect]);
+
+  const createWorksheet = useCallback(async () => {
+    setIsCalculating(true);
+    try {
+      const next = await client.createWorksheet();
+      const initialSelection = { anchor: "A1", focus: "A1" } as const;
+      setWorkbook(next);
+      setSelection(initialSelection);
+      await inspect(initialSelection.anchor);
+      setPulse((value) => value + 1);
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Worksheet could not be created.");
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [client, inspect]);
+
+  const deleteWorksheet = useCallback(async () => {
+    setIsCalculating(true);
+    try {
+      const next = await client.deleteWorksheet();
+      const initialSelection = { anchor: "A1", focus: "A1" } as const;
+      setWorkbook(next);
+      setSelection(initialSelection);
+      await inspect(initialSelection.anchor);
+      setPulse((value) => value + 1);
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Worksheet could not be deleted.");
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [client, inspect]);
+
   const selectedCell = useMemo(
     () => workbook?.cells.get(selection.anchor),
     [selection.anchor, workbook],
@@ -120,5 +170,8 @@ export function useSpreadsheet(client: SpreadsheetClient) {
     select,
     commit,
     recalculate,
+    openWorksheet,
+    createWorksheet,
+    deleteWorksheet,
   };
 }

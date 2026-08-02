@@ -2,6 +2,7 @@ import {
   Cell,
   Workbook,
   WorkbookRevision,
+  cellIdParts,
   revisionNumber,
   type CellId,
   type WorkbookChangeSet,
@@ -74,8 +75,11 @@ export const createInMemoryRepositories = (): SpreadsheetRepositories => {
     create: async (
       changeSet: WorkbookChangeSet,
     ): Promise<WorkbookRevisionCreateResult> => {
-      if (changeSet.cellChanges.length === 0) {
-        throw new RangeError("WorkbookChangeSet must contain at least one CellChange.");
+      if (
+        changeSet.cellChanges.length === 0 &&
+        changeSet.nextWorksheets === undefined
+      ) {
+        throw new RangeError("WorkbookChangeSet must change Cells or Worksheets.");
       }
       const stored = storedWorkbooks.get(changeSet.workbookId);
       if (!stored) {
@@ -86,6 +90,38 @@ export const createInMemoryRepositories = (): SpreadsheetRepositories => {
       const baseRevision = Number(changeSet.baseRevision);
       if (baseRevision < 0 || baseRevision > currentRevision) {
         return { kind: "revision-not-found", requestedRevision: baseRevision };
+      }
+      if (
+        changeSet.nextWorksheets !== undefined &&
+        baseRevision !== currentRevision
+      ) {
+        return { kind: "revision-not-found", requestedRevision: baseRevision };
+      }
+
+      const nextWorksheets =
+        changeSet.nextWorksheets ?? stored.revision.worksheets;
+      const nextWorksheetIds = new Set(
+        nextWorksheets.map((worksheet) => worksheet.id),
+      );
+      const cellsWithoutWorksheet = changeSet.cellChanges
+        .filter(
+          (change) =>
+            !nextWorksheetIds.has(cellIdParts(change.cellId).worksheetId),
+        )
+        .map((change) => change.cellId);
+      if (cellsWithoutWorksheet.length > 0) {
+        if (
+          changeSet.nextWorksheets === undefined &&
+          baseRevision < currentRevision
+        ) {
+          return {
+            kind: "edit-conflict",
+            conflictingCellIds: cellsWithoutWorksheet,
+          };
+        }
+        throw new RangeError(
+          "CellChange targets a Worksheet absent from the next revision.",
+        );
       }
 
       const conflictingCellIds = changeSet.cellChanges
@@ -99,7 +135,11 @@ export const createInMemoryRepositories = (): SpreadsheetRepositories => {
       }
 
       const nextRevision = revisionNumber(currentRevision + 1);
-      const nextStates = new Map(stored.cellStates);
+      const nextStates = new Map(
+        [...stored.cellStates].filter(([id]) =>
+          nextWorksheetIds.has(cellIdParts(id).worksheetId),
+        ),
+      );
       for (const change of changeSet.cellChanges) {
         nextStates.set(
           change.cellId,
@@ -114,7 +154,7 @@ export const createInMemoryRepositories = (): SpreadsheetRepositories => {
       const revision = new WorkbookRevision({
         workbookId: stored.revision.workbookId,
         number: nextRevision,
-        worksheets: stored.revision.worksheets,
+        worksheets: nextWorksheets,
         cells: materializedCells(nextStates),
       });
       const workbook = new Workbook({

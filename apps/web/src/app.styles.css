@@ -245,12 +245,18 @@ pre { font-family: "IBM Plex Mono", "SFMono-Regular", monospace; }
 .error-list li { border-left: 2px solid #dd776f; padding-left: 6px; }
 
 .sheet-statusbar { display: grid; grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr); align-items: center; min-width: 0; border-top: 1px solid #0c412c; background: #115b3a; color: #e3f1e5; }
-.sheet-tabs { display: flex; height: 100%; align-items: center; padding-left: 4px; }
-.sheet-tabs .inline-flex { color: #c9dfcd; }
-.sheet-tab { align-self: stretch; min-width: 60px; border: 0; border-left: 1px solid rgba(255,255,255,.09); background: transparent; padding: 0 12px; color: #c9dfcd; font-size: 11px; }
+.sheet-tabs { display: flex; overflow-x: auto; height: 100%; min-width: 0; align-items: stretch; padding-left: 3px; scrollbar-width: none; }
+.sheet-tabs::-webkit-scrollbar { display: none; }
+.sheet-tabs .inline-flex { flex: 0 0 auto; color: #c9dfcd; }
+.sheet-add { align-self: center; margin-right: 2px; }
+.sheet-add:hover { background: rgba(255,255,255,.1); }
+.sheet-tab-shell { position: relative; display: flex; flex: 0 0 auto; border-left: 1px solid rgba(255,255,255,.09); }
+.sheet-tab-shell--active::after { position: absolute; right: 7px; bottom: 0; left: 7px; height: 2px; background: #bae5c4; content: ""; }
+.sheet-tab { min-width: 62px; border: 0; background: transparent; padding: 0 12px; color: #c9dfcd; font-size: 11px; }
 .sheet-tab:hover { background: rgba(255,255,255,.08); }
-.sheet-tab--active { position: relative; color: white; font-weight: 600; }
-.sheet-tab--active::after { position: absolute; right: 8px; bottom: 0; left: 8px; height: 2px; background: #bae5c4; content: ""; }
+.sheet-tab-shell--active .sheet-tab { padding-right: 25px; color: white; font-weight: 600; }
+.sheet-tab-delete { position: absolute; top: 50%; right: 6px; display: grid; width: 17px; height: 17px; translate: 0 -50%; place-items: center; border: 0; border-radius: 2px; background: transparent; color: #b8d5be; }
+.sheet-tab-delete:hover { background: rgba(255,255,255,.13); color: white; }
 .status-center { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 10px; white-space: nowrap; }
 .status-ready { display: inline-flex; align-items: center; gap: 3px; color: #c7eccf; }
 .status-separator { height: 12px; width: 1px; background: rgba(255,255,255,.2); }
@@ -280,6 +286,6 @@ pre { font-family: "IBM Plex Mono", "SFMono-Regular", monospace; }
   .workbook-toolbar .toolbar-group:nth-of-type(n+2), .workbook-toolbar > .mx-1 { display: none; }
   .name-box { width: 70px; padding-left: 8px; }
   .formula-fx { width: 25px; }
-  .sheet-tabs .sheet-tab:not(.sheet-tab--active) { display: none; }
+  .sheet-tabs .sheet-tab-shell:not(.sheet-tab-shell--active) { display: none; }
   .status-center { gap: 5px; }
 }
