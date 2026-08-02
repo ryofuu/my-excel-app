@@ -12,7 +12,7 @@ import {
   worksheetId,
   worksheetName,
   type CellId,
-} from "../../index";
+} from "../../../index";
 
 const worksheet = new Worksheet({
   id: worksheetId("worksheet-1"),

@@ -66,7 +66,7 @@ flowchart TD
 
 ### 1. FormulaとRevisionをcompileする
 
-[compileFormula](../../core/domain/services/calculation/compile-formula.service.ts)は、1つのFormulaSourceに対して次の部品を順番に組み合わせます。
+[compileFormula](../../core/domain/services/calculation/formula/compile-formula.service.ts)は、1つのFormulaSourceに対して次の部品を順番に組み合わせます。
 
 ```text
 FormulaSource
@@ -79,7 +79,7 @@ FormulaSource
 
 Tokenizer、Parser、Dependency抽出は前段の出力だけを受け取ります。FormulaSourceから一連の派生物を作る責務はcompileFormulaに集約しています。
 
-[compileRevision](../../core/domain/services/calculation/compile-revision.service.ts)は、Revision内の各FormulaへcompileFormulaを適用し、次のGraphを構築します。
+[compileRevision](../../core/domain/services/calculation/graph/compile-revision.service.ts)は、Revision内の各FormulaへcompileFormulaを適用し、次のGraphを構築します。
 
 - CellごとのPrecedent
 - 直接参照に対するDependent

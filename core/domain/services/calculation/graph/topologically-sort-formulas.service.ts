@@ -1,5 +1,5 @@
-import type { CellId } from "../../value-objects/cell-address.vo";
-import type { FormulaAdjacency } from "../../derived/calculation/dependency-graph.derived";
+import type { CellId } from "../../../value-objects/cell-address.vo";
+import type { FormulaAdjacency } from "../../../derived/calculation/dependency-graph.derived";
 
 /** 循環参照を含まないFormulaを、PrecedentからDependentの順に並べる。 */
 export const topologicallySortFormulas = (

@@ -222,7 +222,7 @@ C4をC10へコピーします。
 9. [schema.prisma](../../apps/server/prisma/schema.prisma)
 10. [prisma-workbook.repository.ts](../../apps/server/src/persistence/prisma/prisma-workbook.repository.ts)
 11. [prisma-workbook.codec.ts](../../apps/server/src/persistence/prisma/prisma-workbook.codec.ts)
-12. [compile-revision.service.ts](../../core/domain/services/calculation/compile-revision.service.ts)
+12. [compile-revision.service.ts](../../core/domain/services/calculation/graph/compile-revision.service.ts)
 13. [recalculate.service.ts](../../core/domain/services/calculation/recalculate.service.ts)
 14. [spreadsheet-view.projection.ts](../../apps/web/src/usecases/spreadsheet-view.projection.ts)
 

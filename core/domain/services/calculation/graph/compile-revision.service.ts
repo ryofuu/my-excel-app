@@ -1,12 +1,12 @@
-import type { CellId } from "../../value-objects/cell-address.vo";
-import type { WorkbookRevision } from "../../entities/workbook-revision.entity";
+import type { CellId } from "../../../value-objects/cell-address.vo";
+import type { WorkbookRevision } from "../../../entities/workbook-revision.entity";
 import type {
   CompiledRevision,
   Dependency,
   FormulaAnalysis,
   RangeDependent,
-} from "../../derived/calculation/dependency-graph.derived";
-import { compileFormula } from "./compile-formula.service";
+} from "../../../derived/calculation/dependency-graph.derived";
+import { compileFormula } from "../formula/compile-formula.service";
 
 /** 全Formula CellをCompileし、参照元・依存先を引けるGraphへまとめる。 */
 export const compileRevision = (
