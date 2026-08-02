@@ -12,9 +12,9 @@ import {
   type SpreadsheetSelection,
 } from "@/presentation/spreadsheet/spreadsheet-selection.utility";
 import type {
-  CellInput,
   WorkbookView,
 } from "@/usecases/spreadsheet-client.port";
+import type { CellInputDraft } from "@/presentation/spreadsheet/workbook-revision.draft";
 
 const ROW_HEADER_WIDTH = 48;
 const COLUMN_HEADER_HEIGHT = 26;
@@ -30,7 +30,7 @@ type SpreadsheetGridProps = {
   readonly zoom: number;
   readonly onSelect: (selection: SpreadsheetSelection) => void;
   readonly onCommit: (
-    inputs: readonly CellInput[],
+    inputs: readonly CellInputDraft[],
     inspectedAddress: string,
   ) => Promise<void>;
   readonly onCopy: () => void;

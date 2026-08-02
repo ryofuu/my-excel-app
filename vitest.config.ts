@@ -8,7 +8,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["packages/**/*.test.ts", "apps/**/*.test.ts"],
+    include: ["core/**/*.test.ts", "apps/**/*.test.ts"],
     coverage: {
       reporter: ["text", "json-summary"]
     }

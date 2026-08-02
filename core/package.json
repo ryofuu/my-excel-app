@@ -1,0 +1,14 @@
+{
+  "name": "@gridline/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./domain": "./domain/index.ts",
+    "./usecases": "./usecases/index.ts",
+    "./testing": "./usecases/testing/in-memory-workbook.repository.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

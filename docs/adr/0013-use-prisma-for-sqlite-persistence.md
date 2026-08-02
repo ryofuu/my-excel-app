@@ -1,0 +1,7 @@
+# SQLite永続化にPrismaを使用する
+
+`apps/server`のWorkbookRepositoryは手書きSQLとNode組み込みSQLiteを直接扱わず、Prisma ORMと`@prisma/adapter-better-sqlite3`で実装する。SQLiteファイルをserverが所有するADR 0008、RepositoryをCRUDとcompare-and-swapに限定するADR 0012は維持する。
+
+Table構造は`apps/server/prisma/schema.prisma`で宣言し、migrationをversion管理する。ローカル起動時は既存DBとの互換性とzero-setupを維持するため、同じDDLをPrisma Client経由で冪等に初期化する。RepositoryはPrismaのinteractive transactionを使い、Workbookの期待Revisionを条件にした更新、Worksheet Snapshot、変更Cellを原子的に保存する。
+
+Prisma modelはDomain Entityではない。HTTP resourceと同様に外部表現として扱い、読み出し時はZodでCellContent JSONを検証したうえで、すべての識別子、名前、Revision、CellContentをDomain factoryへ通してWorkbook集約を復元する。DomainのRevision生成、EditConflict、不変条件をPrisma hookやDB queryへ移さない。

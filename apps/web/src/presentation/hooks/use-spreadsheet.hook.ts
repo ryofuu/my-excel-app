@@ -1,12 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  parseA1Address,
+  parseCellInput,
+  worksheetId,
+} from "@gridline/core/domain";
+
 import type {
   CalculationInspection,
-  CellInput,
+  CreateWorkbookRevisionCommand,
   SpreadsheetClient,
   WorkbookView,
 } from "@/usecases/spreadsheet-client.port";
 import type { SpreadsheetSelection } from "@/presentation/spreadsheet/spreadsheet-selection.utility";
+import type { WorkbookRevisionDraft } from "@/presentation/spreadsheet/workbook-revision.draft";
+
+const revisionCommand = (
+  draft: WorkbookRevisionDraft,
+): CreateWorkbookRevisionCommand => {
+  // UI の生文字列は Presentation 境界で一度だけ VO に変換する。
+  // 以降の UseCase は、検証済みの Address / CellContent だけを受け取る。
+  if (draft.kind === "set-cell-contents") {
+    return {
+      kind: "set-cell-contents",
+      changes: draft.inputs.map((input) => ({
+        address: parseA1Address(input.address),
+        content: parseCellInput(input.input),
+      })),
+    };
+  }
+  // 内部コピーでは内容を文字列化せず、位置だけを渡して現在の CellContent を UseCase で取得する。
+  return {
+    kind: "copy-cells",
+    copies: draft.copies.map((copy) => ({
+      source: parseA1Address(copy.sourceAddress),
+      target: parseA1Address(copy.targetAddress),
+    })),
+  };
+};
 
 const emptyInspection = (address: string): CalculationInspection => ({
   address,
@@ -36,7 +67,7 @@ export function useSpreadsheet(client: SpreadsheetClient) {
   const inspect = useCallback(async (address: string) => {
     const id = ++requestId.current;
     try {
-      const next = await client.inspect(address);
+      const next = await client.inspect(parseA1Address(address));
       if (id === requestId.current) setInspection(next);
     } catch (reason) {
       if (id === requestId.current) setError(reason instanceof Error ? reason.message : "Could not inspect the selected cell.");
@@ -70,12 +101,13 @@ export function useSpreadsheet(client: SpreadsheetClient) {
   }, [inspect]);
 
   const commit = useCallback(async (
-    inputs: readonly CellInput[],
+    draft: WorkbookRevisionDraft,
     inspectedAddress: string,
   ) => {
     setIsCalculating(true);
     try {
-      const next = await client.createCells(inputs);
+      // Draft の検証に成功してから初めて Revision 作成へ進む。
+      const next = await client.createRevision(revisionCommand(draft));
       setWorkbook(next);
       await inspect(inspectedAddress);
       setPulse((value) => value + 1);
@@ -102,10 +134,10 @@ export function useSpreadsheet(client: SpreadsheetClient) {
     }
   }, [client, inspect, selection.anchor]);
 
-  const openWorksheet = useCallback(async (worksheetId: string) => {
+  const openWorksheet = useCallback(async (worksheetIdValue: string) => {
     setIsCalculating(true);
     try {
-      const next = await client.open(worksheetId);
+      const next = await client.open(worksheetId(worksheetIdValue));
       const initialSelection = { anchor: "A1", focus: "A1" } as const;
       setWorkbook(next);
       setSelection(initialSelection);

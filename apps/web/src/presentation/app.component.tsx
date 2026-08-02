@@ -13,16 +13,19 @@ import {
   DEFAULT_ROW_COUNT,
 } from "@/presentation/spreadsheet/spreadsheet-grid.utility";
 import {
-  cellInputsForPaste,
+  revisionDraftForPaste,
   spreadsheetClipboard,
   spreadsheetClipboardFromText,
   type SpreadsheetClipboard,
 } from "@/presentation/spreadsheet/spreadsheet-clipboard.utility";
 import { selectionLabel, type SpreadsheetSelection } from "@/presentation/spreadsheet/spreadsheet-selection.utility";
 import type {
-  CellInput,
   SpreadsheetClient,
 } from "@/usecases/spreadsheet-client.port";
+import type {
+  CellInputDraft,
+  WorkbookRevisionDraft,
+} from "@/presentation/spreadsheet/workbook-revision.draft";
 
 type AppProps = Readonly<{
   client: SpreadsheetClient;
@@ -41,12 +44,17 @@ export default function App({ client }: AppProps) {
   };
 
   const commit = async (
-    inputs: readonly CellInput[],
+    draft: WorkbookRevisionDraft,
     inspectedAddress: string,
   ) => {
     setFormulaEditing(false);
-    await spreadsheet.commit(inputs, inspectedAddress);
+    await spreadsheet.commit(draft, inspectedAddress);
   };
+
+  const commitInputs = (
+    inputs: readonly CellInputDraft[],
+    inspectedAddress: string,
+  ) => commit({ kind: "set-cell-contents", inputs }, inspectedAddress);
 
   const copySelection = async () => {
     if (spreadsheet.workbook === null) return;
@@ -58,7 +66,7 @@ export default function App({ client }: AppProps) {
     try {
       await navigator.clipboard?.writeText(clipboard.text);
     } catch {
-      // The in-app clipboard remains available when browser permission is denied.
+      // Browser の権限が拒否されても、アプリ内 Clipboard はそのまま利用できる。
     }
   };
 
@@ -71,11 +79,11 @@ export default function App({ client }: AppProps) {
       clipboard = copiedCells;
     }
     if (clipboard === null) return;
-    const inputs = cellInputsForPaste(
+    const draft = revisionDraftForPaste(
       clipboard,
       spreadsheet.selection.anchor,
     );
-    await commit(inputs, spreadsheet.selection.anchor);
+    await commit(draft, spreadsheet.selection.anchor);
   };
 
   const workbookName = spreadsheet.workbook?.name ?? "Formula laboratory";
@@ -116,7 +124,7 @@ export default function App({ client }: AppProps) {
           isEditing={formulaEditing}
           onCancel={() => setFormulaEditing(false)}
           onCommit={(input) =>
-            void commit(
+            void commitInputs(
               [{ address: spreadsheet.selectedAddress, input }],
               spreadsheet.selectedAddress,
             )
@@ -139,7 +147,7 @@ export default function App({ client }: AppProps) {
             )}
             <SpreadsheetGrid
               columnCount={DEFAULT_COLUMN_COUNT}
-              onCommit={commit}
+              onCommit={commitInputs}
               onCopy={() => void copySelection()}
               onPaste={(text) => void pasteSelection(text)}
               onSelect={select}

@@ -41,7 +41,7 @@ _Avoid_: WorksheetName, sheet index
 _Avoid_: WorksheetId, sheet index
 
 **Cell**:
-**Worksheet** 上の行と列で一意に特定される単位。設定されている場合は **CellContent** を持ち、その有無と内容に対応する **CellValue** を得る。
+**Worksheet** 上の行と列で一意に特定される単位。設定されている場合は **CellContent** を持ち、その有無と内容に対応する **CellValue** を得る。**CellContent** の削除は **Cell** 自体の削除ではない。
 _Avoid_: Field, box
 
 **CellAddress**:

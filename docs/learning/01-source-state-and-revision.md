@@ -11,7 +11,7 @@
 | `CellContent` | FormulaSource `=A4-B4` | 利用者が保存した正本 |
 | `CellValue` | Number `480` | 正本から導出した結果 |
 
-Gridlineでは、`Cell` Entityに`CellValue`を持たせません。[cell.entity.ts](../../packages/spreadsheet/src/domain/entities/cell.entity.ts)が持つのは、位置を示す`CellId`、入力の`CellContent`、最後に変更されたRevisionだけです。
+Gridlineでは、`Cell` Entityに`CellValue`を持たせません。[cell.entity.ts](../../core/domain/entities/cell.entity.ts)が持つのは、位置を示す`CellId`、入力の`CellContent`、最後に変更されたRevisionだけです。
 
 これにより、計算途中の値が保存状態へ混ざらず、計算結果を捨てて再生成できます。この判断は[ADR 0001](../adr/0001-separate-input-and-calculation.md)にも記録されています。
 
@@ -42,7 +42,7 @@ type Cell = {
 
 ## 入力文字列からCellContentへ
 
-[parseCellInput](../../packages/spreadsheet/src/domain/value-objects/cell-content.vo.ts)は、UIから受け取った文字列を次の規則で分類します。
+[parseCellInput](../../core/domain/value-objects/cell-content.vo.ts)は、UIから受け取った文字列を次の規則で分類します。
 
 | 入力例 | CellContent |
 | --- | --- |
@@ -61,23 +61,23 @@ type Cell = {
 
 | 構造 | 同一性・対応先 | 含むもの | 保存 |
 | --- | --- | --- | --- |
-| `Workbook` | 文書の永続的な`WorkbookId` | 名前、現在のRevision番号 | する |
+| `Workbook` | 文書の永続的な`WorkbookId` | 名前、現在の完全な`WorkbookRevision` | する |
 | `WorkbookRevision` | Workbookの入力版 | Worksheet順、全CellContent | する |
 | `CalculationSnapshot` | 1つのRevision | CellValue、Formula解析、依存グラフ、計算Trace | しない |
 
-[workbook-revision.entity.ts](../../packages/spreadsheet/src/domain/entities/workbook-revision.entity.ts)は、1回の計算に必要な完全な入力状態です。一方、[calculation-snapshot.derived.ts](../../packages/spreadsheet/src/domain/derived/calculation/calculation-snapshot.derived.ts)は`sourceRevision`を持ち、どの入力版から導出されたかを明示します。
+[workbook-revision.entity.ts](../../core/domain/entities/workbook-revision.entity.ts)は、1回の計算に必要な完全な入力状態です。一方、[calculation-snapshot.derived.ts](../../core/domain/derived/calculation/calculation-snapshot.derived.ts)は`sourceRevision`を持ち、どの入力版から導出されたかを明示します。
 
 ```mermaid
 flowchart TB
-  Workbook["Workbook<br/>id・name・currentRevision"]
-  Revision0["WorkbookRevision 0<br/>Worksheet順・CellContentの集合"]
-  Revision1["WorkbookRevision 1<br/>Worksheet順・CellContentの集合"]
-  Snapshot0["CalculationSnapshot<br/>sourceRevision = 0"]
+  Workbook0["Workbook<br/>id・name・Revision 0"]
+  Revision0["WorkbookRevision 0<br/>Worksheet順・Cellの集合"]
+  Workbook1["次のWorkbook<br/>id・name・Revision 1"]
+  Revision1["WorkbookRevision 1<br/>Worksheet順・Cellの集合"]
   Snapshot1["CalculationSnapshot<br/>sourceRevision = 1"]
 
-  Workbook --> Revision0
-  Workbook --> Revision1
-  Revision0 --> Snapshot0
+  Workbook0 --> Revision0
+  Workbook0 -->|"ChangeSetを適用"| Workbook1
+  Workbook1 --> Revision1
   Revision1 --> Snapshot1
 ```
 
@@ -85,7 +85,7 @@ flowchart TB
 
 ## 1回の操作をWorkbookChangeSetにする
 
-セルごとにRevisionを増やすのではなく、1回の利用者操作を[WorkbookChangeSet](../../packages/spreadsheet/src/domain/value-objects/workbook-change-set.vo.ts)としてまとめます。
+セルごとにRevisionを増やすのではなく、1回の利用者操作を[WorkbookChangeSet](../../core/domain/value-objects/workbook-change-set.vo.ts)としてまとめます。
 
 ```ts
 {
@@ -104,7 +104,7 @@ flowchart TB
 - 同じCellを1つのChangeSet内で2回変更しない
 - 編集を開始した`baseRevision`を持つ
 
-UseCaseの[create-workbook-revision.usecase.ts](../../packages/spreadsheet/src/usecases/workbook-revisions/create-workbook-revision.usecase.ts)は、この操作をRepositoryへ渡して次のRevisionを作ります。
+UseCaseの[create-workbook-revision.usecase.ts](../../core/usecases/workbook-revisions/create-workbook-revision.usecase.ts)はRepositoryから現在のWorkbookを読み、Domain ServiceへChangeSetを渡して次のWorkbookを作り、Repositoryへcompare-and-swapで保存します。Revisionの競合判定と生成はDomainの責務で、Repositoryは完成した集約を保存するだけです。
 
 ## Worksheetの作成と削除もRevisionを作る
 
@@ -137,13 +137,14 @@ Workbookは必ず1つ以上のWorksheetを持ちます。最後のWorksheetは�
 
 ## Cellは疎に保持する
 
-表計算の座標空間は巨大ですが、ほとんどのCellは空です。Gridlineは内容を持つCellだけを`Map<CellId, Cell>`へ保持します。
+表計算の座標空間は巨大ですが、ほとんどのCellは空です。Gridlineは入力または編集されたCellだけを`Map<CellId, Cell>`へ保持します。
 
 - Mapに存在しないCellの値はBlank
-- 内容を削除したCellはWorkbookRevisionのCell Mapから消える
-- Repository内部には競合検出用のtombstoneを残す
+- 一度も編集されていない空CellはMapへ作らない
+- 内容を削除したCellも`content: null`と`modifiedRevision`を持つCell EntityとしてMapへ残す
+- 計算時は、存在しないCellと`content: null`のCellをどちらもBlankとして扱う
 
-この疎な構造により、計算と保存の量を表全体ではなく、実際に使用しているCell数へ近づけます。
+`content: null`のCellは古い編集との競合をDomainで判定するために必要です。それでも未編集の空Cellは生成しないため、計算と保存の量を表全体ではなく、実際に編集されたCell数へ近づけられます。
 
 ## この章で押さえること
 
@@ -152,6 +153,6 @@ Workbookは必ず1つ以上のWorksheetを持ちます。最後のWorksheetは�
 3. 1回の複数セル操作は1つのWorkbookChangeSetと1つのRevisionになる。
 4. Worksheetの集合と順序もWorkbookRevisionの入力状態である。
 5. Cell変更はCell単位でmergeできるが、Worksheet構造変更には最新Revisionが必要である。
-6. 空のCellを大量に生成せず、入力されたCellだけを疎に保持する。
+6. 未編集の空Cellは生成せず、削除済みCellは`content: null`のEntityとして疎に保持する。
 
 次は、FormulaSourceがどのようにTokenとASTへ変換されるかを見ます。

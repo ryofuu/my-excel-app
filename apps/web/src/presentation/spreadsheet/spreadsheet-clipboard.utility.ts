@@ -1,7 +1,5 @@
-import type {
-  CellInput,
-  WorkbookView,
-} from "@/usecases/spreadsheet-client.port";
+import type { WorkbookView } from "@/usecases/spreadsheet-client.port";
+import type { WorkbookRevisionDraft } from "./workbook-revision.draft";
 
 import {
   cellAddress,
@@ -12,24 +10,31 @@ import {
   type SpreadsheetSelection,
 } from "./spreadsheet-selection.utility";
 
-export type SpreadsheetClipboardCell = Readonly<{
+export type InternalClipboardCell = Readonly<{
   input: string;
-  sourceAddress?: string;
+  sourceAddress: string;
 }>;
 
-export type SpreadsheetClipboard = Readonly<{
-  rows: readonly (readonly SpreadsheetClipboardCell[])[];
-  text: string;
-}>;
+export type SpreadsheetClipboard =
+  | Readonly<{
+      kind: "internal";
+      rows: readonly (readonly InternalClipboardCell[])[];
+      text: string;
+    }>
+  | Readonly<{
+      kind: "external";
+      rows: readonly (readonly Readonly<{ input: string }>[])[];
+      text: string;
+    }>;
 
 export const spreadsheetClipboard = (
   workbook: WorkbookView,
   selection: SpreadsheetSelection,
 ): SpreadsheetClipboard => {
   const bounds = selectionBounds(selection);
-  const rows: SpreadsheetClipboardCell[][] = [];
+  const rows: InternalClipboardCell[][] = [];
   for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
-    const cells: SpreadsheetClipboardCell[] = [];
+    const cells: InternalClipboardCell[] = [];
     for (
       let column = bounds.startColumn;
       column <= bounds.endColumn;
@@ -44,6 +49,7 @@ export const spreadsheetClipboard = (
     rows.push(cells);
   }
   return {
+    kind: "internal",
     rows,
     text: rows.map((row) => row.map((cell) => cell.input).join("\t")).join("\n"),
   };
@@ -60,29 +66,45 @@ export const spreadsheetClipboardFromText = (
     .split("\n")
     .map((row) => row.split("\t").map((input) => ({ input })));
   return {
+    kind: "external",
     rows,
     text: rows.map((row) => row.map((cell) => cell.input).join("\t")).join("\n"),
   };
 };
 
-export const cellInputsForPaste = (
+export const revisionDraftForPaste = (
   clipboard: SpreadsheetClipboard,
   targetAddress: string,
-): readonly CellInput[] => {
+): WorkbookRevisionDraft => {
   const target = parseAddress(targetAddress);
   if (target === null) {
     throw new RangeError(`Invalid paste target: ${targetAddress}.`);
   }
-  return clipboard.rows.flatMap((row, rowOffset) =>
-    row.map((cell, columnOffset) => ({
-      address: cellAddress({
-        column: target.column + columnOffset,
-        row: target.row + rowOffset,
-      }),
-      input: cell.input,
-      ...(cell.sourceAddress === undefined
-        ? {}
-        : { copiedFromAddress: cell.sourceAddress }),
-    })),
-  );
+  if (clipboard.kind === "internal") {
+    return {
+      kind: "copy-cells",
+      copies: clipboard.rows.flatMap((row, rowOffset) =>
+        row.map((cell, columnOffset) => ({
+          sourceAddress: cell.sourceAddress,
+          targetAddress: cellAddress({
+            column: target.column + columnOffset,
+            row: target.row + rowOffset,
+          }),
+        })),
+      ),
+    };
+  }
+
+  return {
+    kind: "set-cell-contents",
+    inputs: clipboard.rows.flatMap((row, rowOffset) =>
+      row.map((cell, columnOffset) => ({
+        address: cellAddress({
+          column: target.column + columnOffset,
+          row: target.row + rowOffset,
+        }),
+        input: cell.input,
+      })),
+    ),
+  };
 };

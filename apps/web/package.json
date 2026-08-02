@@ -11,7 +11,8 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "latest",
     "@fontsource-variable/ibm-plex-sans": "latest",
-    "@gridline/spreadsheet": "workspace:*",
+    "@gridline/core": "workspace:*",
+    "zod": "latest",
     "@radix-ui/react-dialog": "latest",
     "@radix-ui/react-tooltip": "latest",
     "class-variance-authority": "latest",

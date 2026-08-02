@@ -37,7 +37,7 @@ Parserは単なる計算前処理ではなく、Formulaという小さな言語�
 
 ## FormulaSourceを保持する
 
-[cell-content.vo.ts](../../packages/spreadsheet/src/domain/value-objects/cell-content.vo.ts)の`FormulaSource`は、`=`から始まる文字列です。これはASTに置き換えられる一時データではなく、利用者が入力した正本です。
+[cell-content.vo.ts](../../core/domain/value-objects/cell-content.vo.ts)の`FormulaSource`は、`=`から始まる文字列です。これはASTに置き換えられる一時データではなく、利用者が入力した正本です。
 
 - 表示と再編集に元の文字列を使える
 - 構文エラーがあっても入力を失わない
@@ -45,7 +45,7 @@ Parserは単なる計算前処理ではなく、Formulaという小さな言語�
 
 ## Tokenizer
 
-[formula.tokenizer.ts](../../packages/spreadsheet/src/domain/value-objects/formula/formula.tokenizer.ts)は先頭の`=`を読み飛ばし、残りをTokenへ分解します。
+[formula.tokenizer.ts](../../core/domain/value-objects/formula/formula.tokenizer.ts)は先頭の`=`を読み飛ばし、残りをTokenへ分解します。
 
 主なTokenは次のとおりです。
 
@@ -64,7 +64,7 @@ Parserは単なる計算前処理ではなく、Formulaという小さな言語�
 
 ## Parserと演算子の優先順位
 
-[formula.parser.ts](../../packages/spreadsheet/src/domain/value-objects/formula/formula.parser.ts)は、Token列を再帰下降構文解析でASTへ変換します。
+[formula.parser.ts](../../core/domain/value-objects/formula/formula.parser.ts)は、Token列を再帰下降構文解析でASTへ変換します。
 
 優先順位は強い順に次のとおりです。
 
@@ -85,7 +85,7 @@ binary "+"
     └── reference B1
 ```
 
-ASTの型は[formula.ast.ts](../../packages/spreadsheet/src/domain/value-objects/formula/formula.ast.ts)にあり、Literal、Reference、Range、Unary、Binary、Callのdiscriminated unionです。
+ASTの型は[formula.ast.ts](../../core/domain/value-objects/formula/formula.ast.ts)にあり、Literal、Reference、Range、Unary、Binary、Callのdiscriminated unionです。
 
 ## Parse Errorも計算結果の一種
 
@@ -101,18 +101,18 @@ CellValue: #PARSE!                導出される
 
 ## ASTから依存関係を抽出する
 
-[compile-revision.service.ts](../../packages/spreadsheet/src/domain/services/calculation/compile-revision.service.ts)は、全Formula Cellを解析し、ASTを走査してDependencyを抽出します。
+[compile-revision.service.ts](../../core/domain/services/calculation/compile-revision.service.ts)は、全Formula Cellを解析し、ASTを走査してDependencyを抽出します。
 
 - `=A1+B1`から、A1とB1へのCell Dependency
 - `=SUM(A1:A1000)`から、A1:A1000へのRange Dependency
 
-Rangeは1000本の辺へ展開せず、範囲の端点を持つsymbolicなDependencyとして保存します。あるCellが変更されたとき、[dependentsOf](../../packages/spreadsheet/src/domain/services/calculation/compile-revision.service.ts)がその座標を含むRangeを検索します。
+Rangeは1000本の辺へ展開せず、範囲の端点を持つsymbolicなDependencyとして保存します。あるCellが変更されたとき、[dependentsOf](../../core/domain/services/calculation/compile-revision.service.ts)がその座標を含むRangeを検索します。
 
 この方法は巨大Rangeのメモリ使用量を抑えます。現在の実装はRange検索を線形に行うため、Range数が増えたときは空間Indexなどが次の最適化候補です。
 
 ## 数式コピーと相対参照
 
-FormulaのReferenceは、座標に加えて行・列それぞれの絶対指定を持ちます。[formula.translator.ts](../../packages/spreadsheet/src/domain/value-objects/formula/formula.translator.ts)はコピー元と貼り付け先の差分を、相対部分だけへ適用します。
+FormulaのReferenceは、座標に加えて行・列それぞれの絶対指定を持ちます。[formula.translator.ts](../../core/domain/value-objects/formula/formula.translator.ts)はコピー元と貼り付け先の差分を、相対部分だけへ適用します。
 
 ```text
 コピー元: A1

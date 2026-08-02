@@ -1,6 +1,9 @@
 packages:
   - apps/*
-  - packages/*
+  - core
 
 onlyBuiltDependencies:
+  - "@prisma/engines"
+  - better-sqlite3
   - esbuild
+  - prisma

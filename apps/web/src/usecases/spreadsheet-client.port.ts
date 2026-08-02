@@ -1,8 +1,12 @@
+import type {
+  CellAddress,
+  CellContent,
+  WorksheetId,
+} from "@gridline/core/domain";
+
 /**
- * A deliberately small boundary between the UI and the calculation runtime.
- *
- * The application adapter can implement this interface without React
- * components knowing about Entities, HTTP resources, or SQLite rows.
+ * UI と計算 Runtime の間に置く、意図的に小さな境界。
+ * React Component は Entity、HTTP Resource、DB Record を知らずに操作できる。
  */
 export type ValueKind = "blank" | "number" | "text" | "boolean" | "error";
 
@@ -54,19 +58,28 @@ export type WorksheetView = {
   readonly name: string;
 };
 
-export type CellInput = {
-  readonly address: string;
-  readonly input: string;
-  /** The source address is supplied only when input comes from a copied Cell. */
-  readonly copiedFromAddress?: string;
-};
+export type CreateWorkbookRevisionCommand =
+  | Readonly<{
+      kind: "set-cell-contents";
+      changes: readonly Readonly<{
+        address: CellAddress;
+        content: CellContent | null;
+      }>[];
+    }>
+  | Readonly<{
+      kind: "copy-cells";
+      copies: readonly Readonly<{
+        source: CellAddress;
+        target: CellAddress;
+      }>[];
+    }>;
 
 export type SpreadsheetClient = {
-  open(worksheetId?: string): Promise<WorkbookView>;
+  open(worksheetId?: WorksheetId): Promise<WorkbookView>;
   createWorksheet(): Promise<WorkbookView>;
   deleteWorksheet(): Promise<WorkbookView>;
-  createCells(inputs: readonly CellInput[]): Promise<WorkbookView>;
-  inspect(address: string): Promise<CalculationInspection>;
+  createRevision(command: CreateWorkbookRevisionCommand): Promise<WorkbookView>;
+  inspect(address: CellAddress): Promise<CalculationInspection>;
   recalculate(): Promise<WorkbookView>;
   dispose(): void;
 };
