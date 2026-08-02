@@ -33,11 +33,14 @@ import type {
   CompiledRevision,
   Dependency,
   DependencyGraph,
+  FormulaAdjacency,
   FormulaAnalysis,
   RangeDependency,
 } from "../../derived/calculation/dependency-graph.derived";
 import { compileRevision } from "./compile-revision.service";
+import { detectCircularReferences } from "./detect-circular-references.service";
 import { dependentsOf } from "./dependency-graph.service";
+import { topologicallySortFormulas } from "./topologically-sort-formulas.service";
 
 type RangeValue = Readonly<{
   kind: "range-value";
@@ -119,8 +122,6 @@ const formulaPrecedents = (
   return [...result].sort();
 };
 
-type FormulaAdjacency = ReadonlyMap<CellId, readonly CellId[]>;
-
 const formulaAdjacency = (
   dirtyFormulaIds: ReadonlySet<CellId>,
   formulas: ReadonlyMap<CellId, FormulaAnalysis>,
@@ -137,113 +138,6 @@ const formulaAdjacency = (
     );
   }
   return adjacency;
-};
-
-/** 再計算対象の Formula を強連結成分へ分解し、循環参照だけを抽出する。 */
-const cycleComponents = (adjacency: FormulaAdjacency): readonly (readonly CellId[])[] => {
-  let nextIndex = 0;
-  const indices = new Map<CellId, number>();
-  const lowLinks = new Map<CellId, number>();
-  const stack: CellId[] = [];
-  const onStack = new Set<CellId>();
-  const components: CellId[][] = [];
-
-  const visit = (node: CellId): void => {
-    indices.set(node, nextIndex);
-    lowLinks.set(node, nextIndex);
-    nextIndex += 1;
-    stack.push(node);
-    onStack.add(node);
-
-    for (const precedent of adjacency.get(node) ?? []) {
-      if (!indices.has(precedent)) {
-        visit(precedent);
-        const ownLowLink = lowLinks.get(node);
-        const precedentLowLink = lowLinks.get(precedent);
-        if (ownLowLink !== undefined && precedentLowLink !== undefined) {
-          lowLinks.set(node, Math.min(ownLowLink, precedentLowLink));
-        }
-      } else if (onStack.has(precedent)) {
-        const ownLowLink = lowLinks.get(node);
-        const precedentIndex = indices.get(precedent);
-        if (ownLowLink !== undefined && precedentIndex !== undefined) {
-          lowLinks.set(node, Math.min(ownLowLink, precedentIndex));
-        }
-      }
-    }
-
-    if (lowLinks.get(node) !== indices.get(node)) {
-      return;
-    }
-
-    const component: CellId[] = [];
-    while (true) {
-      const member = stack.pop();
-      if (member === undefined) {
-        break;
-      }
-      onStack.delete(member);
-      component.push(member);
-      if (member === node) {
-        break;
-      }
-    }
-    components.push(component.sort());
-  };
-
-  for (const node of [...adjacency.keys()].sort()) {
-    if (!indices.has(node)) {
-      visit(node);
-    }
-  }
-
-  return components
-    .filter((component) => {
-      if (component.length > 1) {
-        return true;
-      }
-      const node = component[0];
-      return node !== undefined && (adjacency.get(node) ?? []).includes(node);
-    })
-    .sort((left, right) => (left[0] ?? "").localeCompare(right[0] ?? ""));
-};
-
-const topologicalOrder = (
-  adjacency: FormulaAdjacency,
-  cyclic: ReadonlySet<CellId>,
-): readonly CellId[] => {
-  const active = [...adjacency.keys()].filter((id) => !cyclic.has(id)).sort();
-  const remainingPrecedents = new Map<CellId, number>();
-  const dependents = new Map<CellId, Set<CellId>>();
-
-  for (const formula of active) {
-    const precedents = (adjacency.get(formula) ?? []).filter((id) => !cyclic.has(id));
-    remainingPrecedents.set(formula, precedents.length);
-    for (const precedent of precedents) {
-      const list = dependents.get(precedent) ?? new Set<CellId>();
-      list.add(formula);
-      dependents.set(precedent, list);
-    }
-  }
-
-  const ready = active.filter((id) => remainingPrecedents.get(id) === 0).sort();
-  const result: CellId[] = [];
-  while (ready.length > 0) {
-    const formula = ready.shift();
-    if (formula === undefined) {
-      continue;
-    }
-    result.push(formula);
-    for (const dependent of [...(dependents.get(formula) ?? [])].sort()) {
-      const remaining = (remainingPrecedents.get(dependent) ?? 0) - 1;
-      remainingPrecedents.set(dependent, remaining);
-      if (remaining === 0) {
-        ready.push(dependent);
-        ready.sort();
-      }
-    }
-  }
-  return result;
 };
 
 const errorFromResult = (result: EvaluationResult): CellError | null =>
@@ -512,7 +406,7 @@ export const recalculate = (
 
   const adjacency = formulaAdjacency(dirtyFormulaIds, compiled.formulas);
   // 循環成分を先にエラーへ確定し、残りだけを依存元から依存先の順に評価する。
-  const cycles = cycleComponents(adjacency);
+  const cycles = detectCircularReferences(adjacency);
   const cyclicFormulaIds = new Set<CellId>(cycles.flat());
   const evaluationOrder: CellId[] = [];
 
@@ -526,7 +420,7 @@ export const recalculate = (
     }
   }
 
-  for (const formulaId of topologicalOrder(adjacency, cyclicFormulaIds)) {
+  for (const formulaId of topologicallySortFormulas(adjacency, cyclicFormulaIds)) {
     const formula = compiled.formulas.get(formulaId);
     if (formula === undefined) {
       continue;
