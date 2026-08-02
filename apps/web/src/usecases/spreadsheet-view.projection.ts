@@ -173,7 +173,7 @@ export const calculationInspection = (
   return {
     address: formatA1Address(address),
     source: cell === undefined ? null : contentInput(cell.content),
-    tokens: analysis ? inspectionTokens(analysis.parse.tokens) : [],
+    tokens: analysis ? inspectionTokens(analysis.tokens) : [],
     ast:
       analysis?.parse.kind === "success"
         ? JSON.stringify(analysis.parse.expression, null, 2)

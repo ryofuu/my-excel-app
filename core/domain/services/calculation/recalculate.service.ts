@@ -36,7 +36,8 @@ import type {
   FormulaAnalysis,
   RangeDependency,
 } from "../../derived/calculation/dependency-graph.derived";
-import { compileRevision, dependentsOf } from "./compile-revision.service";
+import { compileRevision } from "./compile-revision.service";
+import { dependentsOf } from "./dependency-graph.service";
 
 type RangeValue = Readonly<{
   kind: "range-value";

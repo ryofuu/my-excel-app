@@ -64,11 +64,23 @@ flowchart TD
   Compile --> Changed --> Dirty --> Reuse --> Cycle --> Order --> Evaluate --> Snapshot
 ```
 
-### 1. Revisionをcompileする
+### 1. FormulaとRevisionをcompileする
 
-[compileRevision](../../core/domain/services/calculation/compile-revision.service.ts)は、Revision内の全Formulaをparseし、次を作ります。
+[compileFormula](../../core/domain/services/calculation/compile-formula.service.ts)は、1つのFormulaSourceに対して次の部品を順番に組み合わせます。
 
-- FormulaごとのParseResultとDependency
+```text
+FormulaSource
+  → tokenizeFormula
+  → FormulaToken[]
+  → parseFormula
+  → AST / ParseError
+  → Dependency抽出
+```
+
+Tokenizer、Parser、Dependency抽出は前段の出力だけを受け取ります。FormulaSourceから一連の派生物を作る責務はcompileFormulaに集約しています。
+
+[compileRevision](../../core/domain/services/calculation/compile-revision.service.ts)は、Revision内の各FormulaへcompileFormulaを適用し、次のGraphを構築します。
+
 - CellごとのPrecedent
 - 直接参照に対するDependent
 - symbolic Rangeに対するDependent

@@ -90,7 +90,6 @@ export { tokenizeFormula, type FormulaToken } from "./value-objects/formula/form
 
 export {
   parseFormula,
-  referencesInExpression,
   type FormulaParseError,
   type FormulaParseResult,
 } from "./value-objects/formula/formula.parser";
@@ -121,10 +120,13 @@ export {
 } from "./derived/calculation/calculation-snapshot.derived";
 
 export {
-  compileRevision,
+  compileFormula,
   dependenciesInExpression,
-  dependentsOf,
-} from "./services/calculation/compile-revision.service";
+} from "./services/calculation/compile-formula.service";
+
+export { compileRevision } from "./services/calculation/compile-revision.service";
+
+export { dependentsOf } from "./services/calculation/dependency-graph.service";
 
 export { recalculate } from "./services/calculation/recalculate.service";
 

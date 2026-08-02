@@ -2,6 +2,7 @@ import type { CellAddress, CellId } from "../../value-objects/cell-address.vo";
 import type { FormulaSource } from "../../value-objects/cell-content.vo";
 import type { WorksheetId } from "../../value-objects/identifiers.vo";
 import type { FormulaParseResult } from "../../value-objects/formula/formula.parser";
+import type { FormulaToken } from "../../value-objects/formula/formula.tokenizer";
 
 export type CellDependency = Readonly<{
   kind: "cell";
@@ -27,6 +28,7 @@ export type RangeDependent = Readonly<{
 export type FormulaAnalysis = Readonly<{
   cellId: CellId;
   source: FormulaSource;
+  tokens: readonly FormulaToken[];
   parse: FormulaParseResult;
   dependencies: readonly Dependency[];
 }>;

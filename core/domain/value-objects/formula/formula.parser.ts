@@ -1,7 +1,6 @@
-import type { FormulaSource } from "../cell-content.vo";
 import { booleanLiteral, numberLiteral, textLiteral } from "../cell-content.vo";
-import type { BinaryOperator, CellReference, Expression, UnaryOperator } from "./formula.ast";
-import { tokenizeFormula, type FormulaToken } from "./formula.tokenizer";
+import type { BinaryOperator, Expression, UnaryOperator } from "./formula.ast";
+import type { FormulaToken } from "./formula.tokenizer";
 
 export type FormulaParseError = Readonly<{
   message: string;
@@ -12,14 +11,10 @@ export type FormulaParseError = Readonly<{
 export type FormulaParseResult =
   | Readonly<{
       kind: "success";
-      source: FormulaSource;
-      tokens: readonly FormulaToken[];
       expression: Expression;
     }>
   | Readonly<{
       kind: "error";
-      source: FormulaSource;
-      tokens: readonly FormulaToken[];
       error: FormulaParseError;
     }>;
 
@@ -30,13 +25,19 @@ type ParseState = {
 
 type ParseStep = Readonly<{ kind: "success"; expression: Expression }> | Readonly<{ kind: "error"; error: FormulaParseError }>;
 
-const current = (state: ParseState): FormulaToken =>
-  state.tokens[state.index] ?? state.tokens[state.tokens.length - 1] ?? {
+const current = (state: ParseState): FormulaToken => {
+  const token = state.tokens[state.index];
+  if (token !== undefined) {
+    return token;
+  }
+  const end = state.tokens[state.tokens.length - 1]?.end ?? 0;
+  return {
     kind: "eof",
     lexeme: "",
-    start: 0,
-    end: 0,
+    start: end,
+    end,
   };
+};
 
 const advance = (state: ParseState): FormulaToken => {
   const token = current(state);
@@ -222,14 +223,15 @@ const parseComparison = (state: ParseState): ParseStep => {
   return left;
 };
 
-/** 不正な Source と解析用 Token も失わずに FormulaSource を構文解析する。 */
-export const parseFormula = (source: FormulaSource): FormulaParseResult => {
-  const tokens = tokenizeFormula(source);
+/** Tokenizer が生成した FormulaToken 列を、AST または位置付き Error へ変換する。 */
+export const parseFormula = (
+  tokens: readonly FormulaToken[],
+): FormulaParseResult => {
   const state: ParseState = { index: 0, tokens };
   // 比較は最も結合が弱いので、式全体の入口になる。
   const expression = parseComparison(state);
   if (expression.kind === "error") {
-    return { kind: "error", source, tokens, error: expression.error };
+    return { kind: "error", error: expression.error };
   }
 
   const tail = current(state);
@@ -237,40 +239,9 @@ export const parseFormula = (source: FormulaSource): FormulaParseResult => {
   if (tail.kind !== "eof") {
     return {
       kind: "error",
-      source,
-      tokens,
       error: { message: `Unexpected token '${tail.lexeme}'.`, start: tail.start, end: tail.end },
     };
   }
 
-  return { kind: "success", source, tokens, expression: expression.expression };
-};
-
-/** AST を走査し、Formula が直接記述している CellReference を出現順に取り出す。 */
-export const referencesInExpression = (expression: Expression): readonly CellReference[] => {
-  const references: CellReference[] = [];
-  const visit = (node: Expression): void => {
-    switch (node.kind) {
-      case "reference":
-        references.push(node.reference);
-        return;
-      case "range":
-        references.push(node.range.start, node.range.end);
-        return;
-      case "unary":
-        visit(node.operand);
-        return;
-      case "binary":
-        visit(node.left);
-        visit(node.right);
-        return;
-      case "call":
-        node.arguments.forEach(visit);
-        return;
-      case "literal":
-        return;
-    }
-  };
-  visit(expression);
-  return references;
+  return { kind: "success", expression: expression.expression };
 };

@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  formatCellReference,
   formulaSource,
   parseFormula,
-  referencesInExpression,
+  tokenizeFormula,
   type Expression,
 } from "../../index";
 
+const parseSource = (source: string) =>
+  parseFormula(tokenizeFormula(formulaSource(source)));
+
 const expressionOf = (source: string): Expression => {
-  const result = parseFormula(formulaSource(source));
+  const result = parseSource(source);
   if (result.kind === "error") {
     throw new Error(`Formulaの解析に失敗しました: ${result.error.message}`);
   }
@@ -50,12 +52,6 @@ describe("Formulaの構文解析", () => {
     });
   });
 
-  it("式が参照するRangeの両端と単一CellReferenceを出現順に取得する", () => {
-    const references = referencesInExpression(expressionOf("=SUM(A1:B2,C3)"));
-
-    expect(references.map(formatCellReference)).toEqual(["A1", "B2", "C3"]);
-  });
-
   it.each([
     ["=42", { kind: "number", value: 42 }],
     ['="集計"', { kind: "text", value: "集計" }],
@@ -71,12 +67,10 @@ describe("Formulaの構文解析", () => {
     ["=SUM(1", "Expected ')' after function SUM."],
     ["=1 2", "Unexpected token '2'."],
   ] as const)("不正なFormulaSource「%s」の解析位置と理由を返す", (source, message) => {
-    const result = parseFormula(formulaSource(source));
+    const result = parseSource(source);
 
     expect(result).toMatchObject({
       kind: "error",
-      source,
-      tokens: expect.any(Array),
       error: { message, start: expect.any(Number), end: expect.any(Number) },
     });
   });
