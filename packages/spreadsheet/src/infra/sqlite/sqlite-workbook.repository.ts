@@ -40,7 +40,7 @@ const readWorksheet = (row: SqlRow): WorksheetDto => ({
 
 const parseContent = (value: unknown): CellContentDto => {
   if (typeof value !== "string") {
-    throw new TypeError("Expected cell_states.content_json to be a string.");
+    throw new TypeError("Expected cells.content_json to be a string.");
   }
   const content: unknown = JSON.parse(value);
   if (!content || typeof content !== "object" || !("kind" in content)) {
@@ -64,9 +64,9 @@ const cellIdFor = (worksheetId: string, row: number, column: number): string =>
   `${worksheetId}!${formatColumn(column)}${row}`;
 
 const readCell = (row: SqlRow): CellStateDto => {
-  const worksheetId = asString(row.worksheet_id, "cell_states.worksheet_id");
-  const rowNumber = asNumber(row.row_number, "cell_states.row_number");
-  const column = asNumber(row.column_number, "cell_states.column_number");
+  const worksheetId = asString(row.worksheet_id, "cells.worksheet_id");
+  const rowNumber = asNumber(row.row_number, "cells.row_number");
+  const column = asNumber(row.column_number, "cells.column_number");
   return {
     cellId: cellIdFor(worksheetId, rowNumber, column),
     worksheetId,
@@ -75,7 +75,7 @@ const readCell = (row: SqlRow): CellStateDto => {
     content: parseContent(row.content_json),
     modifiedRevision: asNumber(
       row.modified_revision,
-      "cell_states.modified_revision",
+      "cells.modified_revision",
     ),
   };
 };
@@ -113,7 +113,7 @@ const findRevision = (
   const cells = query(
     database,
     `SELECT worksheet_id, row_number, column_number, content_json, modified_revision
-       FROM cell_states
+       FROM cells
       WHERE workbook_id = ?
         AND content_json IS NOT NULL
       ORDER BY worksheet_id ASC, row_number ASC, column_number ASC`,
@@ -136,7 +136,7 @@ const persistCell = (
 ): void => {
   execute(
     database,
-    `INSERT INTO cell_states
+    `INSERT INTO cells
        (workbook_id, worksheet_id, row_number, column_number, content_json, modified_revision)
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(workbook_id, worksheet_id, row_number, column_number)
@@ -162,14 +162,14 @@ const modifiedRevisionFor = (
   const row = query(
     database,
     `SELECT modified_revision
-       FROM cell_states
+       FROM cells
       WHERE workbook_id = ?
         AND worksheet_id = ?
         AND row_number = ?
         AND column_number = ?`,
     [workbookId, cell.worksheetId, cell.row, cell.column],
   )[0];
-  return row ? asNumber(row.modified_revision, "cell_states.modified_revision") : null;
+  return row ? asNumber(row.modified_revision, "cells.modified_revision") : null;
 };
 
 const assertDistinctCellChanges = (cells: readonly CellStateDto[]): void => {
@@ -269,7 +269,7 @@ export const deleteWorkbookInDatabase = (
 };
 
 /**
- * Applies just the changed cell rows.  Tombstones remain in `cell_states`, so
+ * Applies just the changed cell rows. Tombstones remain in `cells`, so
  * a delete made after the caller's base revision conflicts just like an edit.
  */
 export const createWorkbookRevisionInDatabase = (

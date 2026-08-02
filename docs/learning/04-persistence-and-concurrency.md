@@ -57,7 +57,7 @@ Repositoryを交換しても、次の意味は同じです。
 | --- | --- |
 | `workbooks` | WorkbookId、名前、現在のRevision番号 |
 | `worksheets` | WorksheetId、名前、表示順 |
-| `cell_states` | 座標、CellContent、最後に変更したRevision |
+| `cells` | 座標、CellContent、最後に変更したRevision |
 
 保存しないものは次のとおりです。
 
@@ -78,7 +78,7 @@ DomainのWorkbookRevisionは、ある版の完全な入力状態です。ただ�
 
 現在の物理モデル:
   workbooks.current_revision = 2
-  cell_states = Revision 2を構成する現在のCell状態
+  cells = Revision 2を構成する現在のCell状態
 ```
 
 `modified_revision`は各Cellが最後に変更された版を示し、競合検出に使います。過去版の復元やUndo履歴は現在の範囲外です。
@@ -160,7 +160,7 @@ sqlite3 data/gridline.sqlite3
 .schema
 SELECT * FROM workbooks;
 SELECT * FROM worksheets;
-SELECT * FROM cell_states;
+SELECT * FROM cells;
 ```
 
 通常ファイルなので、ブラウザ固有のOPFSやVFSを理解しなくても、保存された正本と`modified_revision`を直接観察できます。serverへ接続できない場合はmemoryへfallbackせず、UIへ接続Errorを返します。永続化されたように見える一時状態を作らないためです。
