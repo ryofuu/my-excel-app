@@ -4,10 +4,8 @@ import {
   Workbook,
   WorkbookRevision,
   Worksheet,
-  cellId,
   compileRevision,
   dependentsOf,
-  parseA1Address,
   parseCellInput,
   recalculate,
   revisionNumber,
@@ -20,6 +18,7 @@ import {
   type CellId,
   type Workbook as WorkbookType,
 } from "../../index";
+import { createCellIdFor } from "./calculation.test-helper";
 
 const ids = {
   workbook: workbookId("workbook-1"),
@@ -28,7 +27,7 @@ const ids = {
 
 const worksheet = new Worksheet({ id: ids.worksheet, name: worksheetName("Sheet1") });
 
-const idFor = (address: string): CellId => cellId(ids.worksheet, parseA1Address(address));
+const idFor = createCellIdFor(ids.worksheet);
 
 const revision = (
   number: number,

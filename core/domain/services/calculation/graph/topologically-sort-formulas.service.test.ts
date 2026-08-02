@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  cellId,
-  parseA1Address,
   worksheetId,
-  type CellId,
 } from "../../../index";
 import type { FormulaAdjacency } from "../../../derived/calculation/dependency-graph.derived";
+import { createCellIdFor } from "../calculation.test-helper";
 import { topologicallySortFormulas } from "./topologically-sort-formulas.service";
 
-const owner = worksheetId("worksheet-1");
-const idFor = (address: string): CellId => cellId(owner, parseA1Address(address));
+const idFor = createCellIdFor(worksheetId("worksheet-1"));
 
 describe("Formulaのトポロジカルソート", () => {
   it("PrecedentからDependentの順へ安定して並べる", () => {

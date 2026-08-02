@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  cellId,
   compileFormula,
   formulaSource,
-  parseA1Address,
   worksheetId,
   type CellId,
   type FormulaAnalysis,
 } from "../../../index";
+import { createCellIdFor } from "../calculation.test-helper";
 import { createFormulaAdjacency } from "./create-formula-adjacency.service";
 
-const owner = worksheetId("worksheet-1");
-const idFor = (address: string): CellId => cellId(owner, parseA1Address(address));
+const idFor = createCellIdFor(worksheetId("worksheet-1"));
 
 const formula = (address: string, source: string): FormulaAnalysis =>
   compileFormula(idFor(address), formulaSource(source));
