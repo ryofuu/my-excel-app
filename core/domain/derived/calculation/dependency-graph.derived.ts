@@ -39,6 +39,9 @@ export type DependencyGraph = Readonly<{
   rangeDependents: readonly RangeDependent[];
 }>;
 
+/** Formula Cellから、そのFormulaが参照する別のFormula Cellを引く隣接関係。 */
+export type FormulaAdjacency = ReadonlyMap<CellId, readonly CellId[]>;
+
 /** WorkbookRevision から構築した、永続化しない計算用 Metadata。 */
 export type CompiledRevision = Readonly<{
   formulas: ReadonlyMap<CellId, FormulaAnalysis>;
