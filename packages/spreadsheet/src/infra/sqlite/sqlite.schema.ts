@@ -20,7 +20,7 @@ export const schemaSql = `
     FOREIGN KEY (workbook_id) REFERENCES workbooks(id) ON DELETE CASCADE
   );
 
-  CREATE TABLE IF NOT EXISTS cell_states (
+  CREATE TABLE IF NOT EXISTS cells (
     workbook_id TEXT NOT NULL,
     worksheet_id TEXT NOT NULL,
     row_number INTEGER NOT NULL CHECK (row_number > 0),
@@ -32,6 +32,6 @@ export const schemaSql = `
       REFERENCES worksheets(workbook_id, id) ON DELETE CASCADE
   );
 
-  CREATE INDEX IF NOT EXISTS cell_states_by_workbook
-    ON cell_states(workbook_id, worksheet_id, row_number, column_number);
+  CREATE INDEX IF NOT EXISTS cells_by_workbook
+    ON cells(workbook_id, worksheet_id, row_number, column_number);
 `;

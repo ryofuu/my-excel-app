@@ -20,7 +20,7 @@ DBの中身はSQLite CLIで直接確認できます。
 ```bash
 sqlite3 data/gridline.sqlite3
 .tables
-SELECT * FROM cell_states;
+SELECT * FROM cells;
 ```
 
 ## 確認コマンド
