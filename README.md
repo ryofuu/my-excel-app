@@ -33,23 +33,23 @@ pnpm build
 
 ## 構成
 
-| パッケージ | 責務 |
+| 配置 | 責務 |
 | --- | --- |
-| `packages/spreadsheet` | Domain、CRUD use case、repository port、HTTP/SQLite境界を含むスプレッドシート本体 |
-| `apps/server` | HTTP resourceとNode SQLite adapter。`data/gridline.sqlite3`を所有 |
-| `apps/web` | UI、計算runtime、HTTP Repository clientをcomposition |
+| `core/domain` | Entity、Value Object、計算・Revision生成のDomain Service |
+| `core/usecases` | 業務操作を組み立てるUseCaseとRepository port |
+| `apps/server` | Hono HTTP resourceとPrisma Repository。SQLiteファイル`data/gridline.sqlite3`を所有 |
+| `apps/web` | React UI、画面用UseCase、HTTP Repositoryをcomposition |
 
-`packages/spreadsheet` の内部では `domain ← usecases ← infra` の依存方向を保ち、`apps/web` がそれらをcompositionします。主な配置は次のとおりです。
+`core/domain ← core/usecases ← apps` の依存方向を保ちます。外部から来た不完全な値はWeb・HTTP境界でZodやDomain factoryを使って検証し、UseCaseには検証済みのEntity・Value Objectだけを渡します。主な配置は次のとおりです。
 
 ```text
-packages/spreadsheet/src/domain/{entities,value-objects,derived/calculation,services/calculation}
-packages/spreadsheet/src/usecases/{workbooks,workbook-revisions,ports}
-packages/spreadsheet/src/infra/{http,repositories,sqlite}
-apps/server/src/{presentation/http,infra/sqlite}
-apps/web/src/{presentation,infra}
+core/domain/{entities,value-objects,derived,services}
+core/usecases/{workbooks,workbook-revisions,ports,testing}
+apps/server/{prisma,src/presentation/http,src/persistence/prisma}
+apps/web/src/{usecases,presentation,persistence}
 ```
 
-各ファイルは原則として `<concept>.<role>.ts(x)` で命名します。たとえば `workbook.entity.ts`、`cell-address.vo.ts`、`recalculate.service.ts`、`create-workbook.usecase.ts`、`http-spreadsheet-repositories.adapter.ts` です。`index.ts`、`main.tsx`、テスト、スタイルシートは慣例名を使います。
+各ファイルは原則として `<concept>.<role>.ts(x)` で命名します。たとえば `workbook.entity.ts`、`cell-address.vo.ts`、`recalculate.service.ts`、`create-workbook.usecase.ts`、`http-workbook.repository.ts` です。`index.ts`、`main.tsx`、テスト、スタイルシートは慣例名を使います。
 
 ## 初期版の数式範囲
 

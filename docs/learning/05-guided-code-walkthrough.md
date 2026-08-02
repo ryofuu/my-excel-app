@@ -19,7 +19,7 @@
 pnpm dev
 ```
 
-ブラウザでFormula laboratoryを開きます。初期データは[formula-laboratory.seed.ts](../../apps/web/src/infra/formula-laboratory.seed.ts)にあります。
+ブラウザでFormula laboratoryを開きます。初期データは[formula-laboratory.seed.ts](../../apps/web/src/usecases/formula-laboratory.seed.ts)にあります。
 
 | Cell | FormulaSourceまたはLiteral | 初期値 |
 | --- | --- | --- |
@@ -30,18 +30,20 @@ pnpm dev
 
 ## A4を1200から1500へ変更する
 
-### 1. PresentationがCellInputを作る
+### 1. Presentation境界が入力を検証する
 
-UIはA4と文字列`1500`を[SpreadsheetClient port](../../apps/web/src/usecases/spreadsheet-client.port.ts)へ渡します。複数セル貼り付けの場合も同じ配列に複数のCellInputが入ります。
+UIが持つA1文字列と入力文字列は、[use-spreadsheet.hook.ts](../../apps/web/src/presentation/hooks/use-spreadsheet.hook.ts)で`CellAddress`と`CellContent`へ変換します。複数セル貼り付けも、同じ境界で全入力を検証します。SpreadsheetClientには不完全な文字列ではなく、factoryを通ったValue Objectだけを渡します。
 
-### 2. AdapterがWorkbookChangeSetを作る
+内部コピーは別のcommandです。sourceとtargetの検証済み`CellAddress`だけを渡し、SpreadsheetClientが現在のsource CellContentを読みます。このため外部入力と内部コピーを`copiedFromAddress?`のような任意値で混在させません。
 
-[engine-spreadsheet-client.adapter.ts](../../apps/web/src/infra/engine-spreadsheet-client.adapter.ts)は次を行います。
+### 2. SpreadsheetClientがWorkbookChangeSetを作る
 
-1. A1表記の`A4`をCellIdへ変換
-2. `1500`をNumber LiteralのCellContentへ変換
+[spreadsheet-client.ts](../../apps/web/src/usecases/spreadsheet-client.ts)は次を行います。
+
+1. 検証済みCellAddressへ現在のWorksheetIdを組み合わせ、CellIdを作る
+2. 検証済みCellContentをCellChangeへ入れる
 3. 現在のRevision 0をbaseRevisionにする
-4. WorkbookChangeSetを作成
+4. factoryでWorkbookChangeSetを作成する
 
 ```text
 WorkbookChangeSet
@@ -51,9 +53,11 @@ WorkbookChangeSet
     └── gridline-sheet-1!A4 = Number(1500)
 ```
 
-### 3. RepositoryがRevision 1を作る
+### 3. DomainがRevision 1を作り、Repositoryが保存する
 
-WebのHTTP Repositoryは`POST /api/workbook-revisions`でWorkbookChangeSet DTOをserverへ渡します。serverのHTTP resourceがSQLite Repositoryを呼び、SQLite transactionはA4の`modified_revision`を確認します。競合がなければA4を更新してWorkbookの`current_revision`を1へ進めます。
+UseCaseはHTTP Repositoryで現在のWorkbookを取得します。Domain ServiceがA4の`modifiedRevision`を確認し、競合がなければRevision 1を含む次のWorkbook集約を作ります。HTTP Repositoryは`PUT /api/workbooks/:workbookId`で完成した集約と期待Revision 0を送り、Prisma RepositoryがSQLite transaction内のcompare-and-swapで保存します。
+
+別の更新が先に確定していた場合、UseCaseは最新Workbookを読み直し、元のChangeSetをDomainへもう一度適用します。同じCellが変更済みならEditConflictになり、無関係なCellの変更なら新しいRevisionへmergeできます。
 
 返されるWorkbookRevision 1は、A4だけの差分ではなく、計算に必要な完全な現在入力状態です。
 
@@ -98,7 +102,7 @@ B4、C5、C6など、変更されていないLiteralや無関係なFormulaの値
 
 ### 6. SnapshotをViewへ投影する
 
-[spreadsheet-view.projection.ts](../../apps/web/src/infra/spreadsheet-view.projection.ts)は、DomainのEntityやCellValueをReact向けの`WorkbookView`へ変換します。
+[spreadsheet-view.projection.ts](../../apps/web/src/usecases/spreadsheet-view.projection.ts)は、DomainのEntityやCellValueをReact向けの`WorkbookView`へ変換します。
 
 - CellIdを`A4`形式へ戻す
 - CellContentをFormula bar用の入力文字列へ戻す
@@ -123,7 +127,7 @@ C4を選択して、次を確認します。
 | Dirty cells | A4から推移的に影響したCell |
 | Evaluation order | Precedentを先にした評価順 |
 
-Inspectorの組み立ては[calculationInspection](../../apps/web/src/infra/spreadsheet-view.projection.ts)にあります。
+Inspectorの組み立ては[calculationInspection](../../apps/web/src/usecases/spreadsheet-view.projection.ts)にあります。
 
 ## 次に試す実験
 
@@ -207,19 +211,22 @@ C4をC10へコピーします。
 
 実験のあと、次の順番で読むとデータの流れを追いやすくなります。
 
-1. [formula-laboratory.seed.ts](../../apps/web/src/infra/formula-laboratory.seed.ts)
-2. [engine-spreadsheet-client.adapter.ts](../../apps/web/src/infra/engine-spreadsheet-client.adapter.ts)
-3. [workbook-change-set.vo.ts](../../packages/spreadsheet/src/domain/value-objects/workbook-change-set.vo.ts)
-4. [create-workbook-revision.usecase.ts](../../packages/spreadsheet/src/usecases/workbook-revisions/create-workbook-revision.usecase.ts)
-5. [http-spreadsheet-repositories.adapter.ts](../../packages/spreadsheet/src/infra/http/http-spreadsheet-repositories.adapter.ts)
-6. [spreadsheet-http-server.factory.ts](../../apps/server/src/presentation/http/spreadsheet-http-server.factory.ts)
-7. [sqlite-workbook.repository.ts](../../packages/spreadsheet/src/infra/sqlite/sqlite-workbook.repository.ts)
-8. [node-sqlite.database.ts](../../apps/server/src/infra/sqlite/node-sqlite.database.ts)
-9. [compile-revision.service.ts](../../packages/spreadsheet/src/domain/services/calculation/compile-revision.service.ts)
-10. [recalculate.service.ts](../../packages/spreadsheet/src/domain/services/calculation/recalculate.service.ts)
-11. [spreadsheet-view.projection.ts](../../apps/web/src/infra/spreadsheet-view.projection.ts)
+1. [formula-laboratory.seed.ts](../../apps/web/src/usecases/formula-laboratory.seed.ts)
+2. [use-spreadsheet.hook.ts](../../apps/web/src/presentation/hooks/use-spreadsheet.hook.ts)
+3. [workbook-change-set.vo.ts](../../core/domain/value-objects/workbook-change-set.vo.ts)
+4. [spreadsheet-client.ts](../../apps/web/src/usecases/spreadsheet-client.ts)
+5. [create-workbook-revision.usecase.ts](../../core/usecases/workbook-revisions/create-workbook-revision.usecase.ts)
+6. [create-workbook-revision.service.ts](../../core/domain/services/revision/create-workbook-revision.service.ts)
+7. [http-workbook.repository.ts](../../apps/web/src/persistence/http-workbook.repository.ts)
+8. [spreadsheet-http-app.factory.ts](../../apps/server/src/presentation/http/spreadsheet-http-app.factory.ts)
+9. [schema.prisma](../../apps/server/prisma/schema.prisma)
+10. [prisma-workbook.repository.ts](../../apps/server/src/persistence/prisma/prisma-workbook.repository.ts)
+11. [prisma-workbook.codec.ts](../../apps/server/src/persistence/prisma/prisma-workbook.codec.ts)
+12. [compile-revision.service.ts](../../core/domain/services/calculation/compile-revision.service.ts)
+13. [recalculate.service.ts](../../core/domain/services/calculation/recalculate.service.ts)
+14. [spreadsheet-view.projection.ts](../../apps/web/src/usecases/spreadsheet-view.projection.ts)
 
-振る舞いの具体例は、[recalculate.service.test.ts](../../packages/spreadsheet/src/domain/services/calculation/recalculate.service.test.ts)、[spreadsheet-server.integration.test.ts](../../apps/server/src/spreadsheet-server.integration.test.ts)、[engine-spreadsheet-client.adapter.test.ts](../../apps/web/src/infra/engine-spreadsheet-client.adapter.test.ts)にもあります。
+振る舞いの具体例は、[recalculate.service.test.ts](../../core/domain/services/calculation/recalculate.service.test.ts)、[spreadsheet-server.integration.test.ts](../../apps/server/src/spreadsheet-server.integration.test.ts)、[spreadsheet-client.test.ts](../../apps/web/src/usecases/spreadsheet-client.test.ts)にもあります。
 
 ## 現在サポートしている範囲
 
@@ -247,6 +254,6 @@ C4をC10へコピーします。
 - なぜ複数セル貼り付けが1つのWorkbookChangeSetなのか
 - なぜWorksheet変更は完全な順序付きSnapshotなのか
 - なぜCell変更は古いRevisionからmergeできても、Worksheet構造変更はできないのか
-- なぜ削除したCellにもtombstoneが必要なのか
+- なぜ内容を削除したCellも`content: null`のEntityとして残すのか
 
 ここまで説明できれば、Gridlineのコードだけでなく、表計算エンジンを設計するときの主要な論点を捉えられています。

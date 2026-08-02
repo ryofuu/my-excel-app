@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { WorkbookView } from "@/usecases/spreadsheet-client.port";
 
 import {
-  cellInputsForPaste,
+  revisionDraftForPaste,
   spreadsheetClipboard,
   spreadsheetClipboardFromText,
 } from "./spreadsheet-clipboard.utility";
@@ -55,22 +55,28 @@ describe("Spreadsheetのクリップボード", () => {
     });
 
     expect(clipboard.text).toBe("1\t=A1*2\n\tlabel");
-    expect(cellInputsForPaste(clipboard, "D5")).toEqual([
-      { address: "D5", input: "1", copiedFromAddress: "A1" },
-      { address: "E5", input: "=A1*2", copiedFromAddress: "B1" },
-      { address: "D6", input: "", copiedFromAddress: "A2" },
-      { address: "E6", input: "label", copiedFromAddress: "B2" },
-    ]);
+    expect(revisionDraftForPaste(clipboard, "D5")).toEqual({
+      kind: "copy-cells",
+      copies: [
+        { sourceAddress: "A1", targetAddress: "D5" },
+        { sourceAddress: "B1", targetAddress: "E5" },
+        { sourceAddress: "A2", targetAddress: "D6" },
+        { sourceAddress: "B2", targetAddress: "E6" },
+      ],
+    });
   });
 
   it("外部のクリップボード文字列を存在しないコピー元アドレスなしで解析する", () => {
     const clipboard = spreadsheetClipboardFromText("1\t2\r\n3\t=A1\r\n");
 
-    expect(cellInputsForPaste(clipboard, "D5")).toEqual([
-      { address: "D5", input: "1" },
-      { address: "E5", input: "2" },
-      { address: "D6", input: "3" },
-      { address: "E6", input: "=A1" },
-    ]);
+    expect(revisionDraftForPaste(clipboard, "D5")).toEqual({
+      kind: "set-cell-contents",
+      inputs: [
+        { address: "D5", input: "1" },
+        { address: "E5", input: "2" },
+        { address: "D6", input: "3" },
+        { address: "E6", input: "=A1" },
+      ],
+    });
   });
 });

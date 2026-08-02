@@ -1,20 +1,26 @@
 import { resolve } from "node:path";
+import * as z from "zod";
 
 import { createSpreadsheetHttpServer } from "./presentation/http/spreadsheet-http-server.factory.ts";
 
-const databasePath =
-  process.env.GRIDLINE_DATABASE_PATH ??
-  resolve(import.meta.dirname, "../../../data/gridline.sqlite3");
-const hostname = process.env.GRIDLINE_SERVER_HOST ?? "127.0.0.1";
-const port = Number(process.env.GRIDLINE_SERVER_PORT ?? "8787");
-if (!Number.isSafeInteger(port) || port < 0 || port > 65_535) {
-  throw new RangeError(`Invalid GRIDLINE_SERVER_PORT: ${process.env.GRIDLINE_SERVER_PORT}.`);
-}
+const environment = z
+  .object({
+    databasePath: z.string().min(1),
+    hostname: z.string().min(1),
+    port: z.coerce.number().int().min(0).max(65_535),
+  })
+  .parse({
+    databasePath:
+      process.env.GRIDLINE_DATABASE_PATH ??
+      resolve(import.meta.dirname, "../../../data/gridline.sqlite3"),
+    hostname: process.env.GRIDLINE_SERVER_HOST ?? "127.0.0.1",
+    port: process.env.GRIDLINE_SERVER_PORT ?? "8787",
+  });
 
-const server = createSpreadsheetHttpServer({ databasePath, hostname, port });
+const server = createSpreadsheetHttpServer(environment);
 const address = await server.listen();
 console.log(`Gridline server listening at ${address.origin}`);
-console.log(`SQLite database: ${databasePath}`);
+console.log(`SQLite database: ${environment.databasePath}`);
 
 const shutdown = (): void => {
   void server.close().finally(() => process.exit(0));

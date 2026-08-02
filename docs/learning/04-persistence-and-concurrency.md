@@ -28,31 +28,34 @@ GridlineはWorkbook全体ではなく、変更Cellの集合を保存単位にし
 
 ## Repository境界
 
-UseCaseはSQLiteへ直接依存せず、[spreadsheet-repositories.port.ts](../../packages/spreadsheet/src/usecases/ports/spreadsheet-repositories.port.ts)のRepository interfaceだけを使います。
+UseCaseはSQLiteへ直接依存せず、[spreadsheet-repositories.port.ts](../../core/usecases/ports/spreadsheet-repositories.port.ts)のRepository interfaceだけを使います。
 
 ```mermaid
 flowchart LR
-  UI["React UI"] --> Client["SpreadsheetClient Adapter"]
+  UI["React UI"] --> Client["Web SpreadsheetClient"]
   Client --> UseCase["createWorkbookRevision"]
-  UseCase --> Port["WorkbookRevisionRepository"]
-  Port --> HTTP["HTTP Repository Adapter"]
-  Port --> Memory["In-memory Adapter"]
-  HTTP --> Server["Node HTTP Server"]
-  Server --> SQLite["Node SQLite Adapter"]
-  SQLite --> File["data/gridline.sqlite3"]
+  UseCase --> Domain["Domain Revision Service"]
+  UseCase --> Port["WorkbookRepository"]
+  Port --> HTTP["HTTP Workbook Repository"]
+  Port --> Memory["In-memory Repository"]
+  HTTP --> Server["Hono HTTP Resource"]
+  Server --> Repository["Prisma Workbook Repository"]
+  Repository --> Prisma["Prisma Client"]
+  Prisma --> File["data/gridline.sqlite3"]
 ```
 
-Repositoryを交換しても、次の意味は同じです。
+次の業務規則はRepositoryではなくDomainにあります。
 
 - 1つのWorkbookChangeSetから1つの次Revisionを作る
-- ChangeSet全体を成功または失敗させる
 - 同じCellへの古い編集をEditConflictにする
 - 重ならない古い編集は受け入れる
 - Worksheet構造変更は最新Revisionからだけ受け入れる
 
+Repositoryの責務は、完成したWorkbook集約の`create`、`find`、`update`、`delete`です。`update`だけは`expectedRevision`を受け取り、同時更新が先に確定していれば`concurrent-write`を返します。SQLiteのtransactionは集約全体を成功または失敗させますが、ChangeSetの意味は知りません。
+
 ## SQLiteに保存するもの
 
-[sqlite.schema.ts](../../packages/spreadsheet/src/infra/sqlite/sqlite.schema.ts)には3つのTableがあります。
+[schema.prisma](../../apps/server/prisma/schema.prisma)には3つのModelがあり、既存のSQLite Table名へ`@@map`で対応づけています。
 
 | Table | 役割 |
 | --- | --- |
@@ -84,19 +87,17 @@ DomainのWorkbookRevisionは、ある版の完全な入力状態です。ただ�
 
 `modified_revision`は各Cellが最後に変更された版を示し、競合検出に使います。過去版の復元やUndo履歴は現在の範囲外です。
 
-## 原子的なChangeSet
+## DomainでRevisionを作り、Repositoryへ原子的に保存する
 
-[createWorkbookRevisionInDatabase](../../packages/spreadsheet/src/infra/sqlite/sqlite-workbook.repository.ts)は、1つのSQLite transaction内で次を行います。
+[create-workbook-revision.usecase.ts](../../core/usecases/workbook-revisions/create-workbook-revision.usecase.ts)は次の順で1操作を処理します。
 
-1. WorkbookとbaseRevisionを検証する
-2. Worksheet Snapshotがあれば、最新Revisionか、不変条件を満たすかを調べる
-3. 変更対象Cellの`modified_revision`と所属Worksheetを調べる
-4. 競合があれば何も書かずにEditConflictを返す
-5. Worksheet行と変更Cell行を必要な分だけ更新する
-6. `current_revision`を1つ進める
-7. 完全な現在Revisionを読み返す
+1. Repositoryから現在のWorkbook集約を読む
+2. [create-workbook-revision.service.ts](../../core/domain/services/revision/create-workbook-revision.service.ts)がbaseRevision、Worksheet、Cellの競合を検証する
+3. Domainが次の完全なWorkbook集約を生成する
+4. Repositoryの`update(nextWorkbook, currentRevision)`でcompare-and-swapする
+5. 他の更新が先に確定していたら最新集約を読み直し、元のChangeSetをDomainで再評価する
 
-複数セル貼り付けの途中で失敗しても、一部だけ保存されません。
+[prisma-workbook.repository.ts](../../apps/server/src/persistence/prisma/prisma-workbook.repository.ts)は、検証済みの完成した集約をPrismaのinteractive transactionで保存します。`updateMany`の条件へ期待Revisionを含めることでCASを行い、その後のWorksheetとCell更新も同じtransactionに含めます。複数セル貼り付けの途中で失敗しても、一部だけ保存されません。In-memoryや別のDBへ差し替えても、Domainの競合規則は変わりません。
 
 ## Cell単位の楽観的競合検出
 
@@ -107,13 +108,16 @@ DomainのWorkbookRevisionは、ある版の完全な入力状態です。ただ�
 ```mermaid
 sequenceDiagram
   participant X as Client X
-  participant DB as Repository
+  participant D as Domain
+  participant R as Repository
   participant Y as Client Y
-  X->>DB: base 0でA1を変更
-  DB-->>X: Revision 1を作成
-  Y->>DB: base 0でB1を変更
-  Note over DB: B1はRevision 0以降未変更
-  DB-->>Y: Revision 2を作成
+  X->>D: Revision 0へA1変更を適用
+  D->>R: Revision 1をCAS保存
+  R-->>X: 更新成功
+  Y->>D: 最新Revision 1へbase 0のB1変更を適用
+  Note over D: B1はRevision 0以降未変更
+  D->>R: Revision 2をCAS保存
+  R-->>Y: 更新成功
 ```
 
 YのbaseRevisionは古いですが、対象のB1は変更されていないため受け入れます。Workbook全体の版が古いだけで拒否すると、無関係な編集まで競合してしまいます。
@@ -123,13 +127,15 @@ YのbaseRevisionは古いですが、対象のB1は変更されていないた�
 ```mermaid
 sequenceDiagram
   participant X as Client X
-  participant DB as Repository
+  participant D as Domain
+  participant R as Repository
   participant Y as Client Y
-  X->>DB: base 0でA1を変更
-  DB-->>X: Revision 1を作成
-  Y->>DB: base 0でA1を変更
-  Note over DB: A1.modified_revision = 1 > base 0
-  DB-->>Y: EditConflict(A1)
+  X->>D: Revision 0へA1変更を適用
+  D->>R: Revision 1をCAS保存
+  R-->>X: 更新成功
+  Y->>D: 最新Revision 1へbase 0のA1変更を適用
+  Note over D: A1.modifiedRevision = 1 > base 0
+  D-->>Y: EditConflict(A1)
 ```
 
 判定規則は次のとおりです。
@@ -138,11 +144,11 @@ sequenceDiagram
 cell.modifiedRevision > changeSet.baseRevision
 ```
 
-## 削除とtombstone
+## 内容を削除したCellもDomain Entityとして残す
 
-CellContentの削除は`content_json = NULL`として保存します。画面やWorkbookRevisionのCell Mapからは消えますが、`modified_revision`を持つ行は残します。
+CellContentの削除ではCell Entity自体を消さず、`content: null`と更新後の`modifiedRevision`を持たせてWorkbookRevisionのCell Mapへ残します。SQLiteでも`content_json = NULL`の行としてそのまま保存します。
 
-これがtombstoneです。tombstoneがなければ、Revision 2で削除されたA1に対して、Revision 1を基にした古い編集が「A1は存在しないから未変更」と誤判定されてしまいます。
+この状態がなければ、Revision 2で内容を削除されたA1に対して、Revision 1を基にした古い編集を「A1は存在しないから未変更」と誤判定します。競合検出に必要な状態を永続化固有のtombstoneへ隠さず、DomainのCellとして明示する設計です。計算結果はBlankになります。
 
 ## Worksheet構造の競合はCellとは別に考える
 
@@ -168,16 +174,16 @@ Worksheetを削除すると、SQLiteの外部キー`ON DELETE CASCADE`によっ�
 
 ## Node serverと通常のSQLiteファイル
 
-ブラウザはSQLiteへ直接アクセスしません。[http-spreadsheet-repositories.adapter.ts](../../packages/spreadsheet/src/infra/http/http-spreadsheet-repositories.adapter.ts)が、Repository interfaceを4つのHTTP resourceへ変換します。
+ブラウザはSQLiteへ直接アクセスしません。[http-workbook.repository.ts](../../apps/web/src/persistence/http-workbook.repository.ts)が、Repository interfaceを4つのHTTP resourceへ変換します。
 
 ```text
 POST   /api/workbooks
 GET    /api/workbooks/:workbookId
+PUT    /api/workbooks/:workbookId
 DELETE /api/workbooks/:workbookId
-POST   /api/workbook-revisions
 ```
 
-[spreadsheet-http-server.factory.ts](../../apps/server/src/presentation/http/spreadsheet-http-server.factory.ts)はDTOを受け取り、[node-sqlite.database.ts](../../apps/server/src/infra/sqlite/node-sqlite.database.ts)を通してNode 24組み込みSQLiteを使います。DBはリポジトリ直下の`data/gridline.sqlite3`です。
+[spreadsheet-http-app.factory.ts](../../apps/server/src/presentation/http/spreadsheet-http-app.factory.ts)はHonoとZodでrequest resourceを検証し、Domain factoryを通してEntity・Value Objectへ復元します。[prisma-client.factory.ts](../../apps/server/src/persistence/prisma/prisma-client.factory.ts)はPrisma ClientとSQLite driverを組み立て、DBをリポジトリ直下の`data/gridline.sqlite3`へ保存します。Prisma recordをDomainとして直接扱わず、[prisma-workbook.codec.ts](../../apps/server/src/persistence/prisma/prisma-workbook.codec.ts)が再度Domain factoryを通してWorkbook集約へ復元します。
 
 ```bash
 sqlite3 data/gridline.sqlite3
@@ -195,11 +201,12 @@ SELECT * FROM cells;
 
 ```text
 Cell入力
+  → Web境界でCellAddressとCellContentへ変換
   → WorkbookChangeSetを作成
-  → HTTP Repository
-  → server上のSQLite transaction
-  → 新しいWorkbookRevisionを取得
-  → 前Revisionと前Snapshotを渡してrecalculate
+  → UseCaseが現在のWorkbookを取得
+  → Domainが次のWorkbookRevisionを生成
+  → HTTP PUTとSQLite transactionでCAS保存
+  → 前Workbookと前Snapshotを渡してrecalculate
   → 新しいCalculationSnapshotをUIへ投影
 ```
 
@@ -207,11 +214,11 @@ Cell入力
 
 ## この章で押さえること
 
-1. Repositoryは保存技術ではなく、Revision作成の意味を抽象化する境界である。
+1. Revision作成と競合判定はDomain、業務手順はUseCase、RepositoryはCRUDとCASを担当する。
 2. 複数セル操作は1 transaction、1 WorkbookChangeSet、1 Revisionである。
 3. 競合はWorkbook全体ではなく、変更対象Cellの最終変更版で判定する。
 4. Worksheet構造は完全なSnapshotとして、最新Revisionからだけ変更する。
-5. Cell削除後の競合検出にはtombstoneが必要である。
+5. 内容を削除したCellも`content: null`のDomain Entityとして残す。
 6. Worksheet削除では所属Cellも同じtransactionで削除する。
 7. 保存するのは正本だけで、計算結果は再生成する。
-8. DBファイルはserverが所有し、WebはRepository契約だけを見る。
+8. DBファイルとPrisma schemaはserverが所有し、WebはRepository契約だけを見る。

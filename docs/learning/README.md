@@ -39,8 +39,8 @@ flowchart LR
 | [1. 入力状態とRevision](01-source-state-and-revision.md) | 入力と計算結果をなぜ分けるのか | Entity、CellContent、WorkbookChangeSet |
 | [2. 数式をデータとして読む](02-formula-language.md) | `=A1+B1`をどう解釈し、コピーするのか | tokenizer、parser、AST、translator |
 | [3. 依存グラフと再計算](03-dependency-and-recalculation.md) | どのセルを、どの順番で再計算するのか | compileRevision、recalculate |
-| [4. 永続化と同時編集](04-persistence-and-concurrency.md) | 複数セル操作と競合をどう原子的に扱うのか | HTTP Repository、Node SQLite |
-| [5. コードを動かして追跡する](05-guided-code-walkthrough.md) | 1回の編集が全層をどう通るのか | Web adapter、Inspector、テスト |
+| [4. 永続化と同時編集](04-persistence-and-concurrency.md) | 複数セル操作と競合をどう原子的に扱うのか | HTTP Repository、Prisma、SQLite |
+| [5. コードを動かして追跡する](05-guided-code-walkthrough.md) | 1回の編集が全層をどう通るのか | Web UseCase、Inspector、テスト |
 
 ## 動かしながら読む
 

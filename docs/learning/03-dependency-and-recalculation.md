@@ -2,7 +2,7 @@
 
 表計算エンジンは、すべてのFormulaを無条件に再評価する必要はありません。変更されたCellと、その値に依存するCellだけをDirtyにし、PrecedentからDependentの順に評価します。
 
-実装の中心は[recalculate.service.ts](../../packages/spreadsheet/src/domain/services/calculation/recalculate.service.ts)です。
+実装の中心は[recalculate.service.ts](../../core/domain/services/calculation/recalculate.service.ts)です。
 
 ## 2つの素朴な再計算が失敗する
 
@@ -66,7 +66,7 @@ flowchart TD
 
 ### 1. Revisionをcompileする
 
-[compileRevision](../../packages/spreadsheet/src/domain/services/calculation/compile-revision.service.ts)は、Revision内の全Formulaをparseし、次を作ります。
+[compileRevision](../../core/domain/services/calculation/compile-revision.service.ts)は、Revision内の全Formulaをparseし、次を作ります。
 
 - FormulaごとのParseResultとDependency
 - CellごとのPrecedent
@@ -158,7 +158,7 @@ C1へ伝播してもoriginをB1のまま保ちます。これにより、Inspect
 
 ## CalculationTrace
 
-[calculation-trace.derived.ts](../../packages/spreadsheet/src/domain/derived/calculation/calculation-trace.derived.ts)は、計算結果だけでなく「何をしたか」を記録します。
+[calculation-trace.derived.ts](../../core/domain/derived/calculation/calculation-trace.derived.ts)は、計算結果だけでなく「何をしたか」を記録します。
 
 - `dirtyCellIds`
 - `evaluationOrder`

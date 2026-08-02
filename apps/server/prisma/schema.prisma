@@ -1,0 +1,46 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/persistence/prisma/generated"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model WorkbookRecord {
+  id              String            @id
+  name            String
+  currentRevision Int               @map("current_revision")
+  worksheets      WorksheetRecord[]
+
+  @@map("workbooks")
+}
+
+model WorksheetRecord {
+  workbookId String         @map("workbook_id")
+  id         String
+  name       String
+  position   Int
+  workbook   WorkbookRecord @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+  cells      CellRecord[]
+
+  @@id([workbookId, id])
+  @@unique([workbookId, position])
+  @@unique([workbookId, name])
+  @@map("worksheets")
+}
+
+model CellRecord {
+  workbookId       String          @map("workbook_id")
+  worksheetId      String          @map("worksheet_id")
+  rowNumber        Int             @map("row_number")
+  columnNumber     Int             @map("column_number")
+  contentJson      String?         @map("content_json")
+  modifiedRevision Int             @map("modified_revision")
+  worksheet        WorksheetRecord @relation(fields: [workbookId, worksheetId], references: [workbookId, id], onDelete: Cascade)
+
+  @@id([workbookId, worksheetId, rowNumber, columnNumber])
+  @@index([workbookId, worksheetId, rowNumber, columnNumber], map: "cells_by_workbook")
+  @@map("cells")
+}
