@@ -19,21 +19,19 @@ export type RangeReference = Readonly<{
 export type UnaryOperator = "+" | "-";
 export type BinaryOperator = "+" | "-" | "*" | "/" | "&" | "=" | "<>" | "<" | "<=" | ">" | ">=";
 
-export type Expression =
+/** Formula内の1つの式を表す抽象構文木。 */
+export type ExpressionAST =
   | Readonly<{ kind: "literal"; literal: Literal }>
   | Readonly<{ kind: "reference"; reference: CellReference }>
   | Readonly<{ kind: "range"; range: RangeReference }>
-  | Readonly<{ kind: "unary"; operator: UnaryOperator; operand: Expression }>
+  | Readonly<{ kind: "unary"; operator: UnaryOperator; operand: ExpressionAST }>
   | Readonly<{
       kind: "binary";
       operator: BinaryOperator;
-      left: Expression;
-      right: Expression;
+      left: ExpressionAST;
+      right: ExpressionAST;
     }>
-  | Readonly<{ kind: "call"; name: string; arguments: readonly Expression[] }>;
-
-/** Parser が Formula 全体から構築した抽象構文木。 */
-export type FormulaAST = Expression;
+  | Readonly<{ kind: "call"; name: string; arguments: readonly ExpressionAST[] }>;
 
 export const formatCellReference = (reference: CellReference): string => {
   const columnPrefix = reference.columnAbsolute ? "$" : "";

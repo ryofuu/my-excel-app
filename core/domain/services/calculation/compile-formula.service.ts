@@ -7,7 +7,7 @@ import {
 } from "../../value-objects/cell-address.vo";
 import type { FormulaSource } from "../../value-objects/cell-content.vo";
 import type { WorksheetId } from "../../value-objects/identifiers.vo";
-import type { Expression } from "../../value-objects/formula/formula.ast";
+import type { ExpressionAST } from "../../value-objects/formula/formula.ast";
 import { parseFormula } from "../../value-objects/formula/formula.parser";
 import { tokenizeFormula } from "../../value-objects/formula/formula.tokenizer";
 import type {
@@ -32,10 +32,10 @@ const normalizeRange = (
 /** ASTから、値を評価せずに記号的な参照関係だけを抽出する。 */
 export const dependenciesInExpression = (
   worksheetId: WorksheetId,
-  expression: Expression,
+  expression: ExpressionAST,
 ): readonly Dependency[] => {
   const dependencies: Dependency[] = [];
-  const visit = (node: Expression): void => {
+  const visit = (node: ExpressionAST): void => {
     switch (node.kind) {
       case "literal":
         return;
@@ -92,7 +92,7 @@ const uniqueDependencies = (
   });
 };
 
-/** FormulaSourceからToken・FormulaAST・依存関係を順に導出する組み合わせ境界。 */
+/** FormulaSourceからToken・ExpressionAST・依存関係を順に導出する組み合わせ境界。 */
 export const compileFormula = (
   id: CellId,
   source: FormulaSource,

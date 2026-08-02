@@ -20,7 +20,7 @@ import {
   type CellError,
   type CellValue,
 } from "../../value-objects/cell-value.vo";
-import type { BinaryOperator, Expression } from "../../value-objects/formula/formula.ast";
+import type { BinaryOperator, ExpressionAST } from "../../value-objects/formula/formula.ast";
 import type { WorkbookRevision } from "../../entities/workbook-revision.entity";
 import type { Workbook } from "../../entities/workbook.entity";
 import {
@@ -312,7 +312,7 @@ const rangeValues = (
 };
 
 const evaluateSum = (
-  arguments_: readonly Expression[],
+  arguments_: readonly ExpressionAST[],
   ownerWorksheetId: ReturnType<typeof cellIdParts>["worksheetId"],
   owner: CellId,
   values: ReadonlyMap<CellId, CellValue>,
@@ -346,7 +346,7 @@ const evaluateSum = (
 };
 
 const evaluateExpression = (
-  expression: Expression,
+  expression: ExpressionAST,
   ownerWorksheetId: ReturnType<typeof cellIdParts>["worksheetId"],
   owner: CellId,
   values: ReadonlyMap<CellId, CellValue>,
