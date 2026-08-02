@@ -1,5 +1,5 @@
-import type { CellId } from "../../value-objects/cell-address.vo";
-import type { FormulaAdjacency } from "../../derived/calculation/dependency-graph.derived";
+import type { CellId } from "../../../value-objects/cell-address.vo";
+import type { FormulaAdjacency } from "../../../derived/calculation/dependency-graph.derived";
 
 /** Formulaの隣接関係を強連結成分へ分解し、循環参照だけを抽出する。 */
 export const detectCircularReferences = (

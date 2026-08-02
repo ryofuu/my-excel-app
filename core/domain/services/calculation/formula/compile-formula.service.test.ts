@@ -5,7 +5,7 @@ import {
   formulaSource,
   parseA1Address,
   worksheetId,
-} from "../../index";
+} from "../../../index";
 
 const formulaId = cellId(
   worksheetId("worksheet-1"),

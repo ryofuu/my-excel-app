@@ -101,12 +101,12 @@ CellValue: #PARSE!                導出される
 
 ## ASTから依存関係を抽出する
 
-[compile-revision.service.ts](../../core/domain/services/calculation/compile-revision.service.ts)は、全Formula Cellを解析し、ASTを走査してDependencyを抽出します。
+[compile-revision.service.ts](../../core/domain/services/calculation/graph/compile-revision.service.ts)は、全Formula Cellを解析し、ASTを走査してDependencyを抽出します。
 
 - `=A1+B1`から、A1とB1へのCell Dependency
 - `=SUM(A1:A1000)`から、A1:A1000へのRange Dependency
 
-Rangeは1000本の辺へ展開せず、範囲の端点を持つsymbolicなDependencyとして保存します。あるCellが変更されたとき、[dependentsOf](../../core/domain/services/calculation/compile-revision.service.ts)がその座標を含むRangeを検索します。
+Rangeは1000本の辺へ展開せず、範囲の端点を持つsymbolicなDependencyとして保存します。あるCellが変更されたとき、[dependentsOf](../../core/domain/services/calculation/graph/dependency-graph.service.ts)がその座標を含むRangeを検索します。
 
 この方法は巨大Rangeのメモリ使用量を抑えます。現在の実装はRange検索を線形に行うため、Range数が増えたときは空間Indexなどが次の最適化候補です。
 

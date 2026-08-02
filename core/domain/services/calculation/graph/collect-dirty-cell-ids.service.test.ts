@@ -6,7 +6,7 @@ import {
   worksheetId,
   type CellId,
   type DependencyGraph,
-} from "../../index";
+} from "../../../index";
 import { collectDirtyCellIds } from "./collect-dirty-cell-ids.service";
 
 const owner = worksheetId("worksheet-1");

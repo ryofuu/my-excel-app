@@ -4,16 +4,16 @@ import {
   cellIdParts,
   type CellAddress,
   type CellId,
-} from "../../value-objects/cell-address.vo";
-import type { FormulaSource } from "../../value-objects/cell-content.vo";
-import type { WorksheetId } from "../../value-objects/identifiers.vo";
-import type { ExpressionAST } from "../../value-objects/formula/formula.ast";
-import { parseFormula } from "../../value-objects/formula/formula.parser";
-import { tokenizeFormula } from "../../value-objects/formula/formula.tokenizer";
+} from "../../../value-objects/cell-address.vo";
+import type { FormulaSource } from "../../../value-objects/cell-content.vo";
+import type { WorksheetId } from "../../../value-objects/identifiers.vo";
+import type { ExpressionAST } from "../../../value-objects/formula/formula.ast";
+import { parseFormula } from "../../../value-objects/formula/formula.parser";
+import { tokenizeFormula } from "../../../value-objects/formula/formula.tokenizer";
 import type {
   Dependency,
   FormulaAnalysis,
-} from "../../derived/calculation/dependency-graph.derived";
+} from "../../../derived/calculation/dependency-graph.derived";
 
 const normalizeRange = (
   first: CellAddress,

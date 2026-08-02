@@ -20,12 +20,12 @@ import type {
   CompiledRevision,
   FormulaAdjacency,
 } from "../../derived/calculation/dependency-graph.derived";
-import { collectDirtyCellIds } from "./collect-dirty-cell-ids.service";
-import { compileRevision } from "./compile-revision.service";
-import { createFormulaAdjacency } from "./create-formula-adjacency.service";
-import { detectCircularReferences } from "./detect-circular-references.service";
-import { evaluateFormula } from "./evaluate-formula.service";
-import { topologicallySortFormulas } from "./topologically-sort-formulas.service";
+import { collectDirtyCellIds } from "./graph/collect-dirty-cell-ids.service";
+import { compileRevision } from "./graph/compile-revision.service";
+import { createFormulaAdjacency } from "./graph/create-formula-adjacency.service";
+import { detectCircularReferences } from "./graph/detect-circular-references.service";
+import { topologicallySortFormulas } from "./graph/topologically-sort-formulas.service";
+import { evaluateFormula } from "./formula/evaluate-formula.service";
 
 const contentAt = (revision: WorkbookRevision, id: CellId): CellContent | null =>
   revision.cells.get(id)?.content ?? null;

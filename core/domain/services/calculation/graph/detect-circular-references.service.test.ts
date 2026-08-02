@@ -5,8 +5,8 @@ import {
   parseA1Address,
   worksheetId,
   type CellId,
-} from "../../index";
-import type { FormulaAdjacency } from "../../derived/calculation/dependency-graph.derived";
+} from "../../../index";
+import type { FormulaAdjacency } from "../../../derived/calculation/dependency-graph.derived";
 import { detectCircularReferences } from "./detect-circular-references.service";
 
 const owner = worksheetId("worksheet-1");

@@ -8,7 +8,7 @@ import {
   type CellId,
   type DependencyGraph,
   type WorksheetId,
-} from "../../index";
+} from "../../../index";
 
 const firstWorksheetId = worksheetId("worksheet-1");
 const secondWorksheetId = worksheetId("worksheet-2");

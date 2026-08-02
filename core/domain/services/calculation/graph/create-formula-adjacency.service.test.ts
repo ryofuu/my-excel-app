@@ -8,7 +8,7 @@ import {
   worksheetId,
   type CellId,
   type FormulaAnalysis,
-} from "../../index";
+} from "../../../index";
 import { createFormulaAdjacency } from "./create-formula-adjacency.service";
 
 const owner = worksheetId("worksheet-1");

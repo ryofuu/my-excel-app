@@ -124,11 +124,11 @@ export {
 export {
   compileFormula,
   dependenciesInExpression,
-} from "./services/calculation/compile-formula.service";
+} from "./services/calculation/formula/compile-formula.service";
 
-export { compileRevision } from "./services/calculation/compile-revision.service";
+export { compileRevision } from "./services/calculation/graph/compile-revision.service";
 
-export { dependentsOf } from "./services/calculation/dependency-graph.service";
+export { dependentsOf } from "./services/calculation/graph/dependency-graph.service";
 
 export { recalculate } from "./services/calculation/recalculate.service";
 

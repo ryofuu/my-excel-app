@@ -4,12 +4,12 @@ import {
   cellIdParts,
   isAddressWithin,
   type CellId,
-} from "../../value-objects/cell-address.vo";
+} from "../../../value-objects/cell-address.vo";
 import {
   booleanLiteral,
   numberLiteral,
   textLiteral,
-} from "../../value-objects/cell-content.vo";
+} from "../../../value-objects/cell-content.vo";
 import {
   BLANK,
   errorValue,
@@ -17,12 +17,12 @@ import {
   literalValue,
   type CellError,
   type CellValue,
-} from "../../value-objects/cell-value.vo";
-import type { BinaryOperator, ExpressionAST } from "../../value-objects/formula/formula.ast";
+} from "../../../value-objects/cell-value.vo";
+import type { BinaryOperator, ExpressionAST } from "../../../value-objects/formula/formula.ast";
 import type {
   FormulaAnalysis,
   RangeDependency,
-} from "../../derived/calculation/dependency-graph.derived";
+} from "../../../derived/calculation/dependency-graph.derived";
 
 type RangeValue = Readonly<{
   kind: "range-value";

@@ -2,11 +2,11 @@ import {
   cellIdParts,
   isAddressWithin,
   type CellId,
-} from "../../value-objects/cell-address.vo";
+} from "../../../value-objects/cell-address.vo";
 import type {
   FormulaAdjacency,
   FormulaAnalysis,
-} from "../../derived/calculation/dependency-graph.derived";
+} from "../../../derived/calculation/dependency-graph.derived";
 
 const formulaPrecedents = (
   analysis: FormulaAnalysis,

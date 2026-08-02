@@ -10,7 +10,7 @@ import {
   worksheetId,
   type CellId,
   type CellValue,
-} from "../../index";
+} from "../../../index";
 import { evaluateFormula } from "./evaluate-formula.service";
 
 const owner = worksheetId("worksheet-1");

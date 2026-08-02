@@ -1,5 +1,5 @@
-import type { CellId } from "../../value-objects/cell-address.vo";
-import type { DependencyGraph } from "../../derived/calculation/dependency-graph.derived";
+import type { CellId } from "../../../value-objects/cell-address.vo";
+import type { DependencyGraph } from "../../../derived/calculation/dependency-graph.derived";
 import { dependentsOf } from "./dependency-graph.service";
 
 /** 変更Cellから、複数の依存グラフ上にある全Dependentを推移的に収集する。 */
