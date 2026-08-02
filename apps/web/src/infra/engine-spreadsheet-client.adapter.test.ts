@@ -1,5 +1,5 @@
 import { createInMemoryRepositories } from "@gridline/spreadsheet/infra";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createEngineSpreadsheetClient } from "./engine-spreadsheet-client.adapter";
 
@@ -90,20 +90,13 @@ describe("engine SpreadsheetClient integration", () => {
     second.dispose();
   });
 
-  it("uses the in-memory Repository Adapter when browser storage cannot start", async () => {
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  it("surfaces a SQLite server error instead of creating transient state", async () => {
     const client = createEngineSpreadsheetClient(async () => {
-      throw new Error("Worker unavailable");
+      throw new Error("SQLite server unavailable");
     });
 
-    const opened = await client.open();
-    const edited = await client.createCells([{ address: "A4", input: "1300" }]);
-
-    expect(opened.revision).toBe(0);
-    expect(edited.revision).toBe(1);
-    expect(warning).toHaveBeenCalledOnce();
+    await expect(client.open()).rejects.toThrow("SQLite server unavailable");
     client.dispose();
-    warning.mockRestore();
   });
 
   it("does not activate after disposal interrupts an asynchronous open", async () => {

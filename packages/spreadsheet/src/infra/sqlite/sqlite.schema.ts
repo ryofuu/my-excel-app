@@ -1,6 +1,7 @@
 /** Only source input state is persisted; calculation artifacts remain derived. */
 export const schemaSql = `
   PRAGMA foreign_keys = ON;
+  PRAGMA journal_mode = WAL;
 
   CREATE TABLE IF NOT EXISTS workbooks (
     id TEXT PRIMARY KEY NOT NULL,

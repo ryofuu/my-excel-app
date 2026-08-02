@@ -18,6 +18,19 @@ importers:
         specifier: latest
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(jiti@2.7.0))
 
+  apps/server:
+    dependencies:
+      '@gridline/spreadsheet':
+        specifier: workspace:*
+        version: link:../../packages/spreadsheet
+    devDependencies:
+      '@types/node':
+        specifier: latest
+        version: 26.1.2
+      typescript:
+        specifier: latest
+        version: 7.0.2
+
   apps/web:
     dependencies:
       '@fontsource-variable/ibm-plex-sans':
@@ -79,11 +92,7 @@ importers:
         specifier: latest
         version: 8.2.0(@types/node@26.1.2)(jiti@2.7.0)
 
-  packages/spreadsheet:
-    dependencies:
-      '@sqlite.org/sqlite-wasm':
-        specifier: latest
-        version: 3.53.0-build1
+  packages/spreadsheet: {}
 
 packages:
 
@@ -474,10 +483,6 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
-
-  '@sqlite.org/sqlite-wasm@3.53.0-build1':
-    resolution: {integrity: sha512-PfWPWN2n+/37doa8oh2/oUXk4OOsRYZsxc1W1sDXIGb/Pu5Yrb+f2eyYpgQMGITVX7HVgxhs9P18Rc6I97ym/g==}
-    engines: {node: '>=22'}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -1546,8 +1551,6 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.0.1': {}
-
-  '@sqlite.org/sqlite-wasm@3.53.0-build1': {}
 
   '@standard-schema/spec@1.1.0': {}
 

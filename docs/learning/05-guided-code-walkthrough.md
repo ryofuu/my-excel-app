@@ -53,7 +53,7 @@ WorkbookChangeSet
 
 ### 3. RepositoryがRevision 1を作る
 
-SQLite transactionはA4の`modified_revision`を確認し、競合がなければA4を更新してWorkbookの`current_revision`を1へ進めます。
+WebのHTTP Repositoryは`POST /api/workbook-revisions`でWorkbookChangeSet DTOをserverへ渡します。serverのHTTP resourceがSQLite Repositoryを呼び、SQLite transactionはA4の`modified_revision`を確認します。競合がなければA4を更新してWorkbookの`current_revision`を1へ進めます。
 
 返されるWorkbookRevision 1は、A4だけの差分ではなく、計算に必要な完全な現在入力状態です。
 
@@ -67,6 +67,7 @@ flowchart LR
   A4 --> D4
   A4 --> D8
   A4 --> F5
+  A4 --> F6
   C4 --> D4
   C4 --> C8
   C4 --> F4
@@ -76,7 +77,7 @@ flowchart LR
 したがって、DirtyCellは次の集合になります。
 
 ```text
-A4, C4, C8, D4, D8, F4, F5
+A4, C4, C8, D4, D8, F4, F5, F6
 ```
 
 B4、C5、C6など、変更されていないLiteralや無関係なFormulaの値は前Snapshotから再利用します。
@@ -186,12 +187,15 @@ C4をC10へコピーします。
 2. [engine-spreadsheet-client.adapter.ts](../../apps/web/src/infra/engine-spreadsheet-client.adapter.ts)
 3. [workbook-change-set.vo.ts](../../packages/spreadsheet/src/domain/value-objects/workbook-change-set.vo.ts)
 4. [create-workbook-revision.usecase.ts](../../packages/spreadsheet/src/usecases/workbook-revisions/create-workbook-revision.usecase.ts)
-5. [sqlite-workbook.repository.ts](../../packages/spreadsheet/src/infra/sqlite/sqlite-workbook.repository.ts)
-6. [compile-revision.service.ts](../../packages/spreadsheet/src/domain/services/calculation/compile-revision.service.ts)
-7. [recalculate.service.ts](../../packages/spreadsheet/src/domain/services/calculation/recalculate.service.ts)
-8. [spreadsheet-view.projection.ts](../../apps/web/src/infra/spreadsheet-view.projection.ts)
+5. [http-spreadsheet-repositories.adapter.ts](../../packages/spreadsheet/src/infra/http/http-spreadsheet-repositories.adapter.ts)
+6. [spreadsheet-http-server.factory.ts](../../apps/server/src/presentation/http/spreadsheet-http-server.factory.ts)
+7. [sqlite-workbook.repository.ts](../../packages/spreadsheet/src/infra/sqlite/sqlite-workbook.repository.ts)
+8. [node-sqlite.database.ts](../../apps/server/src/infra/sqlite/node-sqlite.database.ts)
+9. [compile-revision.service.ts](../../packages/spreadsheet/src/domain/services/calculation/compile-revision.service.ts)
+10. [recalculate.service.ts](../../packages/spreadsheet/src/domain/services/calculation/recalculate.service.ts)
+11. [spreadsheet-view.projection.ts](../../apps/web/src/infra/spreadsheet-view.projection.ts)
 
-振る舞いの具体例は、[recalculate.service.test.ts](../../packages/spreadsheet/src/domain/services/calculation/recalculate.service.test.ts)、[sqlite-workbook.repository.test.ts](../../packages/spreadsheet/src/infra/sqlite/sqlite-workbook.repository.test.ts)、[engine-spreadsheet-client.adapter.test.ts](../../apps/web/src/infra/engine-spreadsheet-client.adapter.test.ts)にもあります。
+振る舞いの具体例は、[recalculate.service.test.ts](../../packages/spreadsheet/src/domain/services/calculation/recalculate.service.test.ts)、[spreadsheet-server.integration.test.ts](../../apps/server/src/spreadsheet-server.integration.test.ts)、[engine-spreadsheet-client.adapter.test.ts](../../apps/web/src/infra/engine-spreadsheet-client.adapter.test.ts)にもあります。
 
 ## 現在サポートしている範囲
 

@@ -8,9 +8,9 @@ import type {
   WorkbookSeedDto,
   WorkbookStateDto,
   WorksheetDto,
-} from "./sqlite-workbook.dto";
-import { execute, query, transaction, type SqlDatabase, type SqlRow } from "./sqlite.database";
-import { schemaSql } from "./sqlite.schema";
+} from "./sqlite-workbook.dto.ts";
+import { execute, query, transaction, type SqlDatabase, type SqlRow } from "./sqlite.database.ts";
+import { schemaSql } from "./sqlite.schema.ts";
 
 const asString = (value: unknown, field: string): string => {
   if (typeof value !== "string") {

@@ -6,8 +6,7 @@ import {
   type WorkbookState,
 } from "@gridline/spreadsheet/usecases";
 import {
-  createBrowserRepositories,
-  createInMemoryRepositories,
+  createHttpSpreadsheetRepositories,
 } from "@gridline/spreadsheet/infra";
 import {
   cellId,
@@ -55,8 +54,8 @@ type ClientLifecycle =
     }>
   | Readonly<{ kind: "disposed" }>;
 
-const browserRepositorySource: RepositorySource = () =>
-  createBrowserRepositories();
+const serverRepositorySource: RepositorySource = () =>
+  Promise.resolve(createHttpSpreadsheetRepositories());
 
 const cellAddressFor = (id: CellId): string =>
   formatA1Address(cellIdParts(id).address);
@@ -80,7 +79,7 @@ const calculatedState = (
  * CalculationSnapshot is derived.
  */
 export function createEngineSpreadsheetClient(
-  repositorySource: RepositorySource = browserRepositorySource,
+  repositorySource: RepositorySource = serverRepositorySource,
 ): SpreadsheetClient {
   let lifecycle: ClientLifecycle = { kind: "idle" };
   let repositoriesPromise: Promise<DisposableRepositories> | undefined;
@@ -93,13 +92,7 @@ export function createEngineSpreadsheetClient(
 
   const repositories = (): Promise<DisposableRepositories> => {
     assertActive();
-    repositoriesPromise ??= repositorySource().catch((error: unknown) => {
-      console.warn(
-        "Gridline SQLite storage is unavailable; using in-memory repositories.",
-        error,
-      );
-      return createInMemoryRepositories();
-    });
+    repositoriesPromise ??= repositorySource();
     return repositoriesPromise;
   };
 
@@ -251,9 +244,10 @@ export function createEngineSpreadsheetClient(
     dispose() {
       if (lifecycle.kind === "disposed") return;
       lifecycle = { kind: "disposed" };
-      void repositoriesPromise?.then((activeRepositories) => {
-        activeRepositories.dispose?.();
-      });
+      void repositoriesPromise?.then(
+        (activeRepositories) => activeRepositories.dispose?.(),
+        () => undefined,
+      );
     },
   };
 }

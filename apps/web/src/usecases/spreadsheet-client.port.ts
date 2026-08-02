@@ -1,9 +1,8 @@
 /**
  * A deliberately small boundary between the UI and the calculation runtime.
  *
- * The local implementation is useful while the browser repository is starting
- * up.  The real application adapter can implement this interface without the
- * React components knowing about entities, workers, or SQLite rows.
+ * The application adapter can implement this interface without React
+ * components knowing about Entities, HTTP resources, or SQLite rows.
  */
 export type ValueKind = "blank" | "number" | "text" | "boolean" | "error";
 
