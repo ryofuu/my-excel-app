@@ -176,7 +176,7 @@ export const calculationInspection = (
     tokens: analysis ? inspectionTokens(analysis.tokens) : [],
     ast:
       analysis?.parse.kind === "success"
-        ? JSON.stringify(analysis.parse.expression, null, 2)
+        ? JSON.stringify(analysis.parse.ast, null, 2)
         : analysis?.parse.kind === "error"
           ? `ParseError: ${analysis.parse.error.message}`
           : null,

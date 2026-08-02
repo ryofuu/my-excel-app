@@ -81,7 +81,7 @@ export {
   formatCellReference,
   type BinaryOperator,
   type CellReference,
-  type Expression,
+  type ExpressionAST,
   type RangeReference,
   type UnaryOperator,
 } from "./value-objects/formula/formula.ast";

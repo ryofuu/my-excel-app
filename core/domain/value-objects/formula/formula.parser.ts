@@ -1,5 +1,9 @@
 import { booleanLiteral, numberLiteral, textLiteral } from "../cell-content.vo";
-import type { BinaryOperator, Expression, UnaryOperator } from "./formula.ast";
+import type {
+  BinaryOperator,
+  ExpressionAST,
+  UnaryOperator,
+} from "./formula.ast";
 import type { FormulaToken } from "./formula.tokenizer";
 
 export type FormulaParseError = Readonly<{
@@ -11,7 +15,7 @@ export type FormulaParseError = Readonly<{
 export type FormulaParseResult =
   | Readonly<{
       kind: "success";
-      expression: Expression;
+      ast: ExpressionAST;
     }>
   | Readonly<{
       kind: "error";
@@ -23,7 +27,7 @@ type ParseState = {
   readonly tokens: readonly FormulaToken[];
 };
 
-type ParseStep = Readonly<{ kind: "success"; expression: Expression }> | Readonly<{ kind: "error"; error: FormulaParseError }>;
+type ParseStep = Readonly<{ kind: "success"; expression: ExpressionAST }> | Readonly<{ kind: "error"; error: FormulaParseError }>;
 
 const current = (state: ParseState): FormulaToken => {
   const token = state.tokens[state.index];
@@ -85,7 +89,7 @@ const parsePrimary = (state: ParseState): ParseStep => {
         return parseError(current(state), `Expected '(' after function ${token.lexeme}.`);
       }
       advance(state);
-      const arguments_: Expression[] = [];
+      const arguments_: ExpressionAST[] = [];
       if (current(state).kind !== "right-paren") {
         while (true) {
           // 関数引数にも比較を含む完全な式を許可するため、最上位の規則から再帰する。
@@ -223,7 +227,7 @@ const parseComparison = (state: ParseState): ParseStep => {
   return left;
 };
 
-/** Tokenizer が生成した FormulaToken 列を、AST または位置付き Error へ変換する。 */
+/** Tokenizer が生成した FormulaToken 列を、ExpressionAST または位置付き Error へ変換する。 */
 export const parseFormula = (
   tokens: readonly FormulaToken[],
 ): FormulaParseResult => {
@@ -243,5 +247,5 @@ export const parseFormula = (
     };
   }
 
-  return { kind: "success", expression: expression.expression };
+  return { kind: "success", ast: expression.expression };
 };
