@@ -9,12 +9,47 @@ datasource db {
 }
 
 model WorkbookRecord {
-  id              String            @id
-  name            String
-  currentRevision Int               @map("current_revision")
-  worksheets      WorksheetRecord[]
+  id                      String                         @id
+  name                    String
+  currentRevision         Int                            @map("current_revision")
+  worksheets              WorksheetRecord[]
+  calculationObservations CalculationObservationRecord[]
 
   @@map("workbooks")
+}
+
+model CalculationObservationRecord {
+  id             String                       @id @default(cuid())
+  workbookId     String                       @map("workbook_id")
+  sourceRevision Int                          @map("source_revision")
+  observedAt     DateTime                     @default(now()) @map("observed_at")
+  graphJson      String                       @map("graph_json")
+  traceJson      String                       @map("trace_json")
+  workbook       WorkbookRecord               @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+  cellValues     CalculationCellValueRecord[]
+
+  @@index([workbookId, sourceRevision, observedAt], map: "calculation_observations_by_revision")
+  @@map("calculation_observations")
+}
+
+model CalculationCellValueRecord {
+  observationId       String                       @map("observation_id")
+  worksheetId         String                       @map("worksheet_id")
+  rowNumber           Int                          @map("row_number")
+  columnNumber        Int                          @map("column_number")
+  kind                String
+  numberValue         Float?                       @map("number_value")
+  textValue           String?                      @map("text_value")
+  booleanValue        Boolean?                     @map("boolean_value")
+  errorCode           String?                      @map("error_code")
+  errorOriginCellId   String?                      @map("error_origin_cell_id")
+  errorMessage        String?                      @map("error_message")
+  formulaAnalysisJson String?                      @map("formula_analysis_json")
+  observation         CalculationObservationRecord @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  @@id([observationId, worksheetId, rowNumber, columnNumber])
+  @@index([worksheetId, rowNumber, columnNumber], map: "calculation_values_by_cell")
+  @@map("calculation_cell_values")
 }
 
 model WorksheetRecord {

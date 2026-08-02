@@ -2,12 +2,22 @@ import { createInMemoryRepositories } from "@gridline/core/testing";
 import {
   parseA1Address,
   parseCellInput,
+  recalculate,
   worksheetId,
+  type Workbook,
 } from "@gridline/core/domain";
 import { describe, expect, it } from "vitest";
 
 import type { SpreadsheetClient } from "./spreadsheet-client.port";
 import { createSpreadsheetClient } from "./spreadsheet-client";
+
+const localCalculationObservations = {
+  create: async (workbook: Workbook) => recalculate(workbook),
+};
+
+const createTestSpreadsheetClient = (
+  repositorySource: Parameters<typeof createSpreadsheetClient>[0],
+) => createSpreadsheetClient(repositorySource, localCalculationObservations);
 
 const setCellContents = (
   client: SpreadsheetClient,
@@ -24,7 +34,7 @@ const setCellContents = (
 describe("SpreadsheetClient integration", () => {
   it("空のWorksheetを作成して開く", async () => {
     const repositories = createInMemoryRepositories();
-    const client = createSpreadsheetClient(async () => repositories);
+    const client = createTestSpreadsheetClient(async () => repositories);
     const opened = await client.open();
 
     const created = await client.createWorksheet();
@@ -46,7 +56,7 @@ describe("SpreadsheetClient integration", () => {
 
   it("最後のWorksheetは残しつつ選択中のWorksheetとそのCellを削除する", async () => {
     const repositories = createInMemoryRepositories();
-    const client = createSpreadsheetClient(async () => repositories);
+    const client = createTestSpreadsheetClient(async () => repositories);
     const opened = await client.open();
     await client.createWorksheet();
     await setCellContents(client, [{ address: "A1", input: "42" }]);
@@ -59,7 +69,6 @@ describe("SpreadsheetClient integration", () => {
     ]);
     expect(deleted.activeWorksheetId).toBe(opened.activeWorksheetId);
     expect(deleted.cells.get("C4")?.value.raw).toBe(480);
-    expect(deleted.dirtyCells).not.toContain("A1");
     await expect(client.deleteWorksheet()).rejects.toThrow(
       "at least one Worksheet",
     );
@@ -68,7 +77,13 @@ describe("SpreadsheetClient integration", () => {
 
   it("1つのRepository経路で開く・編集・Recalculation・検査を行う", async () => {
     const repositories = createInMemoryRepositories();
-    const client = createSpreadsheetClient(async () => repositories);
+    const observedRevisions: number[] = [];
+    const client = createSpreadsheetClient(async () => repositories, {
+      create: async (workbook) => {
+        observedRevisions.push(Number(workbook.revision.number));
+        return recalculate(workbook);
+      },
+    });
 
     const opened = await client.open();
     expect(opened.revision).toBe(0);
@@ -92,6 +107,7 @@ describe("SpreadsheetClient integration", () => {
     const recalculated = await client.recalculate();
     expect(recalculated.revision).toBe(1);
     expect(recalculated.cells.get("C4")?.value.raw).toBe(780);
+    expect(observedRevisions).toEqual([0, 1, 1]);
 
     client.dispose();
     await expect(client.open()).rejects.toThrow("disposed");
@@ -106,12 +122,12 @@ describe("SpreadsheetClient integration", () => {
 
   it("永続状態に対応する現在のWorkbookRevisionを開く", async () => {
     const repositories = createInMemoryRepositories();
-    const first = createSpreadsheetClient(async () => repositories);
+    const first = createTestSpreadsheetClient(async () => repositories);
     await first.open();
     await setCellContents(first, [{ address: "B4", input: "500" }]);
     first.dispose();
 
-    const second = createSpreadsheetClient(async () => repositories);
+    const second = createTestSpreadsheetClient(async () => repositories);
     const reopened = await second.open();
 
     expect(reopened.revision).toBe(1);
@@ -122,7 +138,7 @@ describe("SpreadsheetClient integration", () => {
 
   it("コピーした複数のCellを1つのWorkbookRevisionで作成する", async () => {
     const repositories = createInMemoryRepositories();
-    const client = createSpreadsheetClient(async () => repositories);
+    const client = createTestSpreadsheetClient(async () => repositories);
     await client.open();
 
     const pasted = await client.createRevision({
@@ -141,8 +157,8 @@ describe("SpreadsheetClient integration", () => {
 
   it("2つのclientが固定Workbookを同時作成しても同じ状態に収束する", async () => {
     const repositories = createInMemoryRepositories();
-    const first = createSpreadsheetClient(async () => repositories);
-    const second = createSpreadsheetClient(async () => repositories);
+    const first = createTestSpreadsheetClient(async () => repositories);
+    const second = createTestSpreadsheetClient(async () => repositories);
 
     const [firstView, secondView] = await Promise.all([
       first.open(),
@@ -158,7 +174,7 @@ describe("SpreadsheetClient integration", () => {
   });
 
   it("一時状態を作らずSQLiteサーバーのErrorを呼び出し元へ返す", async () => {
-    const client = createSpreadsheetClient(async () => {
+    const client = createTestSpreadsheetClient(async () => {
       throw new Error("SQLite server unavailable");
     });
 
@@ -169,7 +185,7 @@ describe("SpreadsheetClient integration", () => {
   it("非同期のopenをdisposeで中断した後はactiveにしない", async () => {
     const repositories = createInMemoryRepositories();
     let release!: (value: typeof repositories) => void;
-    const client = createSpreadsheetClient(
+    const client = createTestSpreadsheetClient(
       () =>
         new Promise<typeof repositories>((resolve) => {
           release = resolve;

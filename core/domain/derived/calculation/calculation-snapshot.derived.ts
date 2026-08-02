@@ -5,8 +5,8 @@ import type { CalculationTrace } from "./calculation-trace.derived";
 import type { DependencyGraph, FormulaAnalysis } from "./dependency-graph.derived";
 
 /**
- * 1つの WorkbookRevision から導出した、永続化しない完全な計算結果。
- * 正本は WorkbookRevision なので、Revision 変更時に破棄して再生成できる。
+ * 1つの WorkbookRevision から導出した完全な計算結果。
+ * 観測用の複製を保存しても正本やCacheにはせず、常にRevisionから再生成できる。
  */
 export type CalculationSnapshot = Readonly<{
   sourceRevision: Workbook["revision"]["number"];

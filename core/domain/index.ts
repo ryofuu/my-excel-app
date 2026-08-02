@@ -110,10 +110,12 @@ export {
 } from "./derived/calculation/dependency-graph.derived";
 
 export {
+  calculationTrace,
   type CalculationTrace,
 } from "./derived/calculation/calculation-trace.derived";
 
 export {
+  calculationSnapshot,
   valueInSnapshot,
   type CalculationSnapshot,
   type PreviousCalculation,
