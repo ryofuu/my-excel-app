@@ -1,17 +1,16 @@
 import type { CellId } from "../../value-objects/cell-address.vo";
 import type { FormulaAdjacency } from "../../derived/calculation/dependency-graph.derived";
 
-/** 循環参照を除いたFormulaを、PrecedentからDependentの順に並べる。 */
+/** 循環参照を含まないFormulaを、PrecedentからDependentの順に並べる。 */
 export const topologicallySortFormulas = (
   adjacency: FormulaAdjacency,
-  cyclic: ReadonlySet<CellId>,
 ): readonly CellId[] => {
-  const active = [...adjacency.keys()].filter((id) => !cyclic.has(id)).sort();
+  const active = [...adjacency.keys()].sort();
   const remainingPrecedents = new Map<CellId, number>();
   const dependents = new Map<CellId, Set<CellId>>();
 
   for (const formula of active) {
-    const precedents = (adjacency.get(formula) ?? []).filter((id) => !cyclic.has(id));
+    const precedents = adjacency.get(formula) ?? [];
     remainingPrecedents.set(formula, precedents.length);
     for (const precedent of precedents) {
       const list = dependents.get(precedent) ?? new Set<CellId>();
@@ -36,6 +35,9 @@ export const topologicallySortFormulas = (
         ready.sort();
       }
     }
+  }
+  if (result.length !== active.length) {
+    throw new Error("Formula adjacency could not be topologically sorted.");
   }
   return result;
 };

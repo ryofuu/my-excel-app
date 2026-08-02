@@ -21,7 +21,7 @@ describe("Formulaのトポロジカルソート", () => {
       [idFor("A1"), []],
     ]);
 
-    expect(topologicallySortFormulas(adjacency, new Set())).toEqual([
+    expect(topologicallySortFormulas(adjacency)).toEqual([
       idFor("A1"),
       idFor("B1"),
       idFor("C1"),
@@ -29,18 +29,15 @@ describe("Formulaのトポロジカルソート", () => {
     ]);
   });
 
-  it("循環Formulaを除外してDependentを残す", () => {
+  it("循環を含む隣接関係から部分的な順序を返さない", () => {
     const adjacency: FormulaAdjacency = new Map([
       [idFor("A1"), [idFor("B1")]],
       [idFor("B1"), [idFor("A1")]],
       [idFor("C1"), [idFor("A1")]],
     ]);
 
-    expect(
-      topologicallySortFormulas(
-        adjacency,
-        new Set([idFor("A1"), idFor("B1")]),
-      ),
-    ).toEqual([idFor("C1")]);
+    expect(() => topologicallySortFormulas(adjacency)).toThrow(
+      "Formula adjacency could not be topologically sorted.",
+    );
   });
 });

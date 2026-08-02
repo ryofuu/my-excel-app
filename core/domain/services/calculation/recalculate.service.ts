@@ -140,6 +140,22 @@ const formulaAdjacency = (
   return adjacency;
 };
 
+const excludeFormulaIds = (
+  adjacency: FormulaAdjacency,
+  excluded: ReadonlySet<CellId>,
+): FormulaAdjacency => {
+  const remaining = new Map<CellId, readonly CellId[]>();
+  for (const [formulaId, precedents] of adjacency) {
+    if (!excluded.has(formulaId)) {
+      remaining.set(
+        formulaId,
+        precedents.filter((precedent) => !excluded.has(precedent)),
+      );
+    }
+  }
+  return remaining;
+};
+
 const errorFromResult = (result: EvaluationResult): CellError | null =>
   result.kind === "range-value" ? null : isErrorValue(result) ? result : null;
 
@@ -408,6 +424,7 @@ export const recalculate = (
   // 循環成分を先にエラーへ確定し、残りだけを依存元から依存先の順に評価する。
   const cycles = detectCircularReferences(adjacency);
   const cyclicFormulaIds = new Set<CellId>(cycles.flat());
+  const evaluableAdjacency = excludeFormulaIds(adjacency, cyclicFormulaIds);
   const evaluationOrder: CellId[] = [];
 
   for (const component of cycles) {
@@ -420,7 +437,7 @@ export const recalculate = (
     }
   }
 
-  for (const formulaId of topologicallySortFormulas(adjacency, cyclicFormulaIds)) {
+  for (const formulaId of topologicallySortFormulas(evaluableAdjacency)) {
     const formula = compiled.formulas.get(formulaId);
     if (formula === undefined) {
       continue;
