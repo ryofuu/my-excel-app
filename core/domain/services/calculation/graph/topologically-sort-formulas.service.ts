@@ -9,6 +9,7 @@ export const topologicallySortFormulas = (
   const remainingPrecedentCountByFormulaCellId = new Map<CellId, number>();
   const dependentCellIdsByPrecedentCellId = new Map<CellId, Set<CellId>>();
 
+  // 各Formulaの未処理Precedent数と、PrecedentからDependentへの逆引きを作る。
   for (const formulaCellId of formulaCellIds) {
     const precedentCellIds = formulaAdjacency.get(formulaCellId) ?? [];
     remainingPrecedentCountByFormulaCellId.set(
@@ -23,6 +24,7 @@ export const topologicallySortFormulas = (
     }
   }
 
+  // Precedentを持たず、すぐに順序を確定できるFormulaを安定順で待機させる。
   const readyFormulaCellIds = formulaCellIds
     .filter(
       (formulaCellId) =>
@@ -30,6 +32,8 @@ export const topologicallySortFormulas = (
     )
     .sort();
   const sortedFormulaCellIds: CellId[] = [];
+
+  // 順序を確定したFormulaを取り出し、後続Formulaの未処理Precedent数を減らす。
   while (readyFormulaCellIds.length > 0) {
     const formulaCellId = readyFormulaCellIds.shift();
     if (formulaCellId === undefined) {
@@ -52,6 +56,8 @@ export const topologicallySortFormulas = (
       }
     }
   }
+
+  // 全Formulaの順序を確定できなければ、隣接関係に循環が含まれている。
   if (sortedFormulaCellIds.length !== formulaCellIds.length) {
     throw new Error("Formula adjacency could not be topologically sorted.");
   }
