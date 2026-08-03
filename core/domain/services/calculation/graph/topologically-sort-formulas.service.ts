@@ -1,7 +1,25 @@
 import type { CellId } from "../../../value-objects/cell-address.vo";
 import type { FormulaAdjacency } from "../../../derived/calculation/dependency-graph.derived";
 
-/** 循環参照を含まないFormulaを、PrecedentからDependentの順に並べる。 */
+/**
+ * Formulaを、参照されるCellから参照するFormulaの順に並べる。
+ *
+ * Precedentは「Formulaが参照するCell」、Dependentは「そのCellを使うFormula」。
+ * たとえば B1=A1+1、C1=A1+2、D1=B1+C1 の場合:
+ *
+ * 値が流れる向き（そのまま計算順）
+ *
+ *          ┌──> B1 ──┐
+ *   A1 ────┤         ├──> D1
+ *          └──> C1 ──┘
+ *
+ * FormulaAdjacencyは「Formula -> そのFormulaが参照するFormula Cell IDs」を持つ。
+ *
+ *   A1 -> []
+ *   B1 -> [A1]
+ *   C1 -> [A1]
+ *   D1 -> [B1, C1]
+ */
 export const topologicallySortFormulas = (
   formulaAdjacency: FormulaAdjacency,
 ): readonly CellId[] => {
@@ -9,7 +27,7 @@ export const topologicallySortFormulas = (
   const remainingPrecedentCountByFormulaCellId = new Map<CellId, number>();
   const dependentCellIdsByPrecedentCellId = new Map<CellId, Set<CellId>>();
 
-  // 各Formulaの未処理Precedent数と、PrecedentからDependentへの逆引きを作る。
+  // 各Formulaの未処理参照先数と、参照先Cellからそれを使うFormulaへの逆引きを作る。
   for (const formulaCellId of formulaCellIds) {
     const precedentCellIds = formulaAdjacency.get(formulaCellId) ?? [];
     remainingPrecedentCountByFormulaCellId.set(
@@ -24,7 +42,7 @@ export const topologicallySortFormulas = (
     }
   }
 
-  // Precedentを持たず、すぐに順序を確定できるFormulaを安定順で待機させる。
+  // 先に計算すべき参照先がなく、すぐに順序を確定できるFormulaを待機させる。
   const readyFormulaCellIds = formulaCellIds
     .filter(
       (formulaCellId) =>
