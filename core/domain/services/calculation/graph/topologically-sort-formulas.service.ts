@@ -3,41 +3,57 @@ import type { FormulaAdjacency } from "../../../derived/calculation/dependency-g
 
 /** 循環参照を含まないFormulaを、PrecedentからDependentの順に並べる。 */
 export const topologicallySortFormulas = (
-  adjacency: FormulaAdjacency,
+  formulaAdjacency: FormulaAdjacency,
 ): readonly CellId[] => {
-  const active = [...adjacency.keys()].sort();
-  const remainingPrecedents = new Map<CellId, number>();
-  const dependents = new Map<CellId, Set<CellId>>();
+  const formulaCellIds = [...formulaAdjacency.keys()].sort();
+  const remainingPrecedentCountByFormulaCellId = new Map<CellId, number>();
+  const dependentCellIdsByPrecedentCellId = new Map<CellId, Set<CellId>>();
 
-  for (const formula of active) {
-    const precedents = adjacency.get(formula) ?? [];
-    remainingPrecedents.set(formula, precedents.length);
-    for (const precedent of precedents) {
-      const list = dependents.get(precedent) ?? new Set<CellId>();
-      list.add(formula);
-      dependents.set(precedent, list);
+  for (const formulaCellId of formulaCellIds) {
+    const precedentCellIds = formulaAdjacency.get(formulaCellId) ?? [];
+    remainingPrecedentCountByFormulaCellId.set(
+      formulaCellId,
+      precedentCellIds.length,
+    );
+    for (const precedentCellId of precedentCellIds) {
+      const dependentCellIds =
+        dependentCellIdsByPrecedentCellId.get(precedentCellId) ?? new Set<CellId>();
+      dependentCellIds.add(formulaCellId);
+      dependentCellIdsByPrecedentCellId.set(precedentCellId, dependentCellIds);
     }
   }
 
-  const ready = active.filter((id) => remainingPrecedents.get(id) === 0).sort();
-  const result: CellId[] = [];
-  while (ready.length > 0) {
-    const formula = ready.shift();
-    if (formula === undefined) {
+  const readyFormulaCellIds = formulaCellIds
+    .filter(
+      (formulaCellId) =>
+        remainingPrecedentCountByFormulaCellId.get(formulaCellId) === 0,
+    )
+    .sort();
+  const sortedFormulaCellIds: CellId[] = [];
+  while (readyFormulaCellIds.length > 0) {
+    const formulaCellId = readyFormulaCellIds.shift();
+    if (formulaCellId === undefined) {
       continue;
     }
-    result.push(formula);
-    for (const dependent of [...(dependents.get(formula) ?? [])].sort()) {
-      const remaining = (remainingPrecedents.get(dependent) ?? 0) - 1;
-      remainingPrecedents.set(dependent, remaining);
-      if (remaining === 0) {
-        ready.push(dependent);
-        ready.sort();
+    sortedFormulaCellIds.push(formulaCellId);
+    const dependentCellIds = [
+      ...(dependentCellIdsByPrecedentCellId.get(formulaCellId) ?? []),
+    ].sort();
+    for (const dependentCellId of dependentCellIds) {
+      const remainingPrecedentCount =
+        (remainingPrecedentCountByFormulaCellId.get(dependentCellId) ?? 0) - 1;
+      remainingPrecedentCountByFormulaCellId.set(
+        dependentCellId,
+        remainingPrecedentCount,
+      );
+      if (remainingPrecedentCount === 0) {
+        readyFormulaCellIds.push(dependentCellId);
+        readyFormulaCellIds.sort();
       }
     }
   }
-  if (result.length !== active.length) {
+  if (sortedFormulaCellIds.length !== formulaCellIds.length) {
     throw new Error("Formula adjacency could not be topologically sorted.");
   }
-  return result;
+  return sortedFormulaCellIds;
 };
