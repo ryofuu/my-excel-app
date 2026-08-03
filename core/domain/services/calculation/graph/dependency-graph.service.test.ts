@@ -1,22 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  cellId,
   dependentsOf,
   parseA1Address,
   worksheetId,
-  type CellId,
   type DependencyGraph,
-  type WorksheetId,
 } from "../../../index";
+import { createCellIdFor } from "../calculation.test-helper";
 
 const firstWorksheetId = worksheetId("worksheet-1");
 const secondWorksheetId = worksheetId("worksheet-2");
 
-const idFor = (
-  address: string,
-  owner: WorksheetId = firstWorksheetId,
-): CellId => cellId(owner, parseA1Address(address));
+const idFor = createCellIdFor(firstWorksheetId);
+const secondIdFor = createCellIdFor(secondWorksheetId);
 
 describe("Dependentの検索", () => {
   it("直接参照と同じWorksheetのRange参照を重複なく安定順で返す", () => {
@@ -51,7 +47,7 @@ describe("Dependentの検索", () => {
             start: parseA1Address("A1"),
             end: parseA1Address("A1"),
           },
-          dependent: idFor("A2", secondWorksheetId),
+          dependent: secondIdFor("A2"),
         },
       ],
     };

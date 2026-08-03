@@ -4,7 +4,6 @@ import {
   Cell,
   WorkbookRevision,
   Worksheet,
-  cellId,
   compileRevision,
   parseA1Address,
   parseCellInput,
@@ -13,14 +12,14 @@ import {
   worksheetName,
   type CellId,
 } from "../../../index";
+import { createCellIdFor } from "../calculation.test-helper";
 
 const worksheet = new Worksheet({
   id: worksheetId("worksheet-1"),
   name: worksheetName("Sheet1"),
 });
 
-const idFor = (address: string): CellId =>
-  cellId(worksheet.id, parseA1Address(address));
+const idFor = createCellIdFor(worksheet.id);
 
 const revisionWith = (
   inputs: Readonly<Record<string, string | null>>,

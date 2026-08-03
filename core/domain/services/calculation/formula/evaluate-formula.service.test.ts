@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  cellId,
   compileFormula,
   formulaSource,
   literalValue,
   numberLiteral,
-  parseA1Address,
   worksheetId,
   type CellId,
   type CellValue,
 } from "../../../index";
+import { createCellIdFor } from "../calculation.test-helper";
 import { evaluateFormula } from "./evaluate-formula.service";
 
-const owner = worksheetId("worksheet-1");
-const idFor = (address: string): CellId => cellId(owner, parseA1Address(address));
+const idFor = createCellIdFor(worksheetId("worksheet-1"));
 
 const evaluate = (
   source: string,

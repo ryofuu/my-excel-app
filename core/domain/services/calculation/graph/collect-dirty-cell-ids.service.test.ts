@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  cellId,
-  parseA1Address,
   worksheetId,
   type CellId,
   type DependencyGraph,
 } from "../../../index";
+import { createCellIdFor } from "../calculation.test-helper";
 import { collectDirtyCellIds } from "./collect-dirty-cell-ids.service";
 
-const owner = worksheetId("worksheet-1");
-const idFor = (address: string): CellId => cellId(owner, parseA1Address(address));
+const idFor = createCellIdFor(worksheetId("worksheet-1"));
 
 const graph = (
   directDependentsByCell: ReadonlyMap<CellId, readonly CellId[]>,
